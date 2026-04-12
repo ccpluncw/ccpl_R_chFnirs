@@ -2,58 +2,99 @@
 % Please edit documentation in R/CreateSigBetaTable.r
 \name{CreateSigBetaTable}
 \alias{CreateSigBetaTable}
-\title{Create Grouped Significance Tables from Model Results}
+\title{Create a Significance Table from Model Results}
 \usage{
 CreateSigBetaTable(
   df.data,
-  areaColName,
+  areaColName = "area",
   sigColName,
-  discrete = TRUE,
+  dv_col = "estimate",
+  predColName = NULL,
+  group_col = NULL,
+  output_mode = "discrete",
   sigThresh = 0.05,
   removeIntercept = TRUE
 )
 }
 \arguments{
-\item{df.data}{A data frame in long format containing model results. It must
-include a column named 'Type' that will be used for grouping.}
+\item{df.data}{A long-format data frame of model results. Must
+contain a predictor column (\code{"predictor"} or \code{"Predictor"}, or
+whatever name is passed via \code{predColName}) plus the columns
+named by \code{areaColName}, \code{sigColName}, and \code{dv_col}. Typically
+the output of \code{run_gated_posthoc()}, \code{run_activation_tests()},
+or one of the other Tier 2 functions.}
 
-\item{areaColName}{The name of the column that specifies the area (e.g., "ROI").}
+\item{areaColName}{Character scalar naming the area column
+(e.g., \code{"area"}, \code{"ROI"}, \code{"Region"}). Default \code{"area"} matches
+the Tier 2 output schema.}
 
-\item{sigColName}{The name of the column containing the significance value (e.g., "pVal").}
+\item{sigColName}{Character scalar naming the significance column
+to use (e.g., \code{"p_bh"} for BH-adjusted omnibus p-values,
+\code{"p_bon"} for Bonferroni-adjusted post-hoc p-values,
+\code{"p_value"} for raw p-values). Required, no default — the caller
+must choose which p-value column is appropriate.}
 
-\item{discrete}{Logical. If \code{TRUE}, the output will be -1, 0, or 1 based on the
-significance threshold. If \code{FALSE}, it will be the signed p-value. Default: \code{TRUE}.}
+\item{dv_col}{Character scalar naming the column whose sign gives
+the direction of the effect. Default \code{"estimate"} matches the
+Tier 2 output schema. For omnibus output use
+\code{output_mode = "continuous_unsigned"} and \code{dv_col} is unused.}
 
-\item{sigThresh}{The numeric significance threshold (e.g., 0.05). Default: 0.05.}
+\item{predColName}{Character scalar naming the predictor column in
+\code{df.data}. Default \code{NULL} triggers auto-detection: \code{"predictor"}
+is tried first, \code{"Predictor"} second, and the function errors if
+neither is present. Pass explicitly to override.}
 
-\item{removeIntercept}{Logical. If \code{TRUE}, rows corresponding to the model
-intercept will be removed from the output table. Default: \code{TRUE}.}
+\item{group_col}{Optional character scalar naming a column to
+split on before reshaping, producing one wide table per group.
+Default \code{NULL} produces a single table under the name
+\code{"all_data"}.}
+
+\item{output_mode}{One of \code{"discrete"}, \code{"continuous_signed"}, or
+\code{"continuous_unsigned"}. Default \code{"discrete"}. For backwards
+compatibility also accepts a logical \code{TRUE}/\code{FALSE} — \code{TRUE}
+maps to \code{"discrete"} and \code{FALSE} to \code{"continuous_signed"}.}
+
+\item{sigThresh}{Numeric significance threshold used in
+\code{"discrete"} mode. Default \code{0.05}.}
+
+\item{removeIntercept}{Logical. If \code{TRUE} (default), rows whose
+predictor begins with \code{"(Int"} are dropped before reshaping.}
 }
 \value{
-A list of data frames, with each data frame corresponding to a unique
-value from the 'Type' column.
+A named list of data frames — one per level of \code{group_col}
+when provided, otherwise a single-element list with name
+\code{"all_data"}. Each element has one row per predictor (minus the
+intercept if removed) and one column per area, with the
+predictor column (and \code{group_col} if supplied) as the leading
+columns.
 }
 \description{
-Reshapes a long-format data frame of model results into a wide-format table.
-This function iterates through a required 'Type' column in the input data,
-creating a separate significance table for each level of 'Type'.
+Reshapes a long-format data frame of model results (typically the
+output of \code{run_omnibus_by_area()}, \code{run_gated_posthoc()}, or one of
+the other Tier 2 analysis functions) into a wide-format
+\verb{predictor x area} table suitable for heatmap rendering. Supports
+three output modes:
+\itemize{
+\item \strong{discrete} — cells become -1, 0, or 1 based on the
+sign of \code{dv_col} and whether \code{sigColName} is below \code{sigThresh}.
+\item \strong{continuous_signed} — cells become the signed
+p-value (\code{sigColName * sign(dv_col)}), preserving direction
+information.
+\item \strong{continuous_unsigned} — cells become the absolute
+value of \code{sigColName}, for omnibus F-test results where there
+is no directional coefficient.
 }
-\examples{
-# Create sample model output data with a 'Type' column
-model_data_typed <- data.frame(
-  Predictor = rep(c("(Intercept)", "Age"), times = 4),
-  Beta = rnorm(8),
-  pVal = runif(8, 0, 0.1),
-  ROI = rep(c("Area1", "Area2"), each = 4),
-  Type = rep(c("Fast", "Slow"), each = 2, times = 2)
-)
+NA values in the input (e.g., from non-significant cells in a
+gated post-hoc output) are preserved as NA in the output, so
+downstream heatmap functions can render them as grey tiles.
 
-# Generate the list of significance tables
-result_list <- CreateSigBetaTable(
-  df.data = model_data_typed,
-  areaColName = "ROI",
-  sigColName = "pVal"
-)
-print(result_list)
-
+The function accepts both the Tier 2 snake_case schema
+(\code{predictor}) and the pre-Tier-2 schema (\code{Predictor}). When
+\code{predColName} is left at its default of \code{NULL}, the function
+inspects \code{df.data} for a \code{"predictor"} column first and falls
+back to \code{"Predictor"}; if neither is present, it errors and asks
+the caller to pass \code{predColName} explicitly. Callers who want to
+use a different column name can pass it directly. The output
+column created inside each returned table uses the same name
+that was detected or supplied, preserving the caller's schema.
 }

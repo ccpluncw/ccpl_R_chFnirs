@@ -2,59 +2,59 @@
 % Please edit documentation in R/createHeatMapsFromLmerAreaAnalysis.r
 \name{createHeatMapsFromLmerAreaAnalysis}
 \alias{createHeatMapsFromLmerAreaAnalysis}
-\title{Generate Heatmaps and CSV Files from Model Results}
+\title{Generate Heatmaps and CSV Files from Model Results (Updated for Two-Stage Analysis)}
 \usage{
 createHeatMapsFromLmerAreaAnalysis(
   results_df,
   area_col,
   group_col,
-  pvalue_col,
+  sigValue_col,
+  dv_col = "Beta",
   area_file_type = "Channel",
   output_prefix = NULL,
   significance_threshold = 0.05,
+  heatmap_type = "posthoc",
   scale_type = "log",
   log_power = 0.2,
-  asterisk_sz = 10
+  asterisk_sz = 10,
+  removeIntercept = TRUE
 )
 }
 \arguments{
-\item{results_df}{The dataframe of model results, typically in long format.}
+\item{results_df}{The dataframe of model results in long format.}
 
-\item{area_col}{The name of the column specifying the brain area (e.g., "ROI").}
+\item{area_col}{The name of the column specifying the brain area.}
 
-\item{group_col}{The column to group by for q-value calculation and table generation.
-If \code{NULL}, the entire dataset is treated as a single group.}
+\item{group_col}{The column to group by. If NULL, entire dataset is one group.}
 
-\item{pvalue_col}{The column containing the p-values to be corrected.}
+\item{sigValue_col}{The column containing the corrected p-values.}
 
-\item{area_file_type}{A string ("ROI" or "Channel") used to determine if
-anatomical sorting should be applied. Default: \code{"Channel"}.}
+\item{dv_col}{The column containing the DV (for sign info). Default: "Beta".}
 
-\item{output_prefix}{A string used as the base name for all output files.
-Default: \code{NULL}.}
+\item{area_file_type}{"ROI" or "Channel". Default: "Channel".}
 
-\item{significance_threshold}{The significance threshold (based on q-values)
-for creating discrete effect tables and for asterisks on heatmaps. Default: 0.05.}
+\item{output_prefix}{Base name for output files. Default: NULL.}
 
-\item{scale_type}{(Optional) Specifies the color scale for the continuous heatmap.
-Use \code{"log"} (default) to emphasize values near zero or \code{"linear"} for a standard scale.}
+\item{significance_threshold}{Threshold for asterisks. Default: 0.05.}
 
-\item{log_power}{(Optional) A numeric value that controls the intensity of the
-\code{"log"} scale transformation. Default: 0.2.}
+\item{heatmap_type}{One of "omnibus", "posthoc", or "activation". Default: "posthoc".}
 
-\item{asterisk_sz}{The size (in mm) of the significance asterisks on the
-continuous heatmap. Default: 10.}
+\item{scale_type}{"log" or "linear". Default: "log".}
+
+\item{log_power}{Controls log scale intensity. Default: 0.2.}
+
+\item{asterisk_sz}{Asterisk size in mm. Default: 10.}
+
+\item{removeIntercept}{Remove intercept rows? Default: TRUE.}
 }
 \value{
-Nothing. The function is called for its side effect of writing files
-(CSVs and PDFs) to the current working directory.
+Nothing. Writes CSVs and PDFs to the current working directory.
 }
 \description{
-This function automates the post-processing of linear mixed-effects model
-results. It calculates q-values for multiple comparisons correction, sorts
-brain regions anatomically if specified, and then generates both summary CSV
-files and publication-ready heatmaps to visualize the statistical effects.
+Updated version that supports three heatmap types:
+\itemize{
+\item \strong{"omnibus"}: Green gradient, unsigned p-values (for omnibus F-tests)
+\item \strong{"posthoc"}: Red/blue signed p-values with grey for untested ROIs
+\item \strong{"activation"}: Red/blue signed p-values (for baseline comparisons, no grey)
 }
-\seealso{
-\code{\link{CreateSigBetaTable}}, \code{\link{getQvalues}}
 }

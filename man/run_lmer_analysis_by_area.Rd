@@ -8,11 +8,14 @@ run_lmer_analysis_by_area(
   input_df,
   area_col,
   group_col = NULL,
+  dv_col = "Beta",
   formula_str,
   run_contrasts = FALSE,
   contrast_variable = NULL,
   sinkFileName = NULL,
-  sinkAppend = TRUE
+  sinkAppend = TRUE,
+  useLMfunction = FALSE,
+  keepAllFactorLevelCols = NULL
 )
 }
 \arguments{
@@ -21,6 +24,8 @@ run_lmer_analysis_by_area(
 \item{area_col}{The name of the column specifying the brain area (e.g., "ROI").}
 
 \item{group_col}{The column to group by. If \code{NULL}, the analysis runs per area on the whole dataset. Default: \code{NULL}.}
+
+\item{dv_col}{The column containing the dependent variable.  Default: \code{"Beta"}.}
 
 \item{formula_str}{A string containing the formula for the lmer model (e.g., \code{"Value ~ Condition + (1|Subject)"}).}
 
@@ -31,11 +36,32 @@ run_lmer_analysis_by_area(
 \item{sinkFileName}{The name of the sink file for the output. If \code{NULL}, output prints to the console. Default: \code{NULL}.}
 
 \item{sinkAppend}{A boolean specifying whether the sink file should append to an existing file. Default: \code{TRUE}.}
+
+\item{useLMfunction}{A boolean specifying whether to use lm() instead of lmer(). Default: \code{FALSE}.}
+
+\item{keepAllFactorLevelCols}{A vector of strings that identify the column names to ensure all factor levels are present}
 }
 \value{
 A list containing two dataframes: \code{model_results} and \code{contrast_results}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+\code{run_lmer_analysis_by_area()} has been superseded by
+\code{\link[=run_omnibus_by_area]{run_omnibus_by_area()}}, which provides the same area-wise
+iteration under a unified API that supports both \code{lmer} and \code{lm}
+(with optional HC robust covariance), uses the canonical
+chFnirs snake_case output schema (\code{type}, \code{area}, \code{effect},
+\code{estimate}, \code{statistic}, \code{statistic_type}, \code{p_value}, ...), and
+always computes partial eta-squared when the model permits.
+
+This function is retained as a deprecation shim so existing
+scripts continue to run while being migrated. Call
+\code{run_omnibus_by_area(data, formula, area_col, model = "lmer")}
+for the equivalent omnibus table, and \code{run_activation_tests()} or
+\code{run_gated_posthoc()} for the emmeans-based follow-ups the old
+function bundled inline via \code{run_contrasts = TRUE}.
+
 Iterates through unique values in an 'area' column (and optionally a
 'group' column) of a dataframe, running an LME model on each subset of data.
 }
@@ -49,5 +75,6 @@ This function provides two main execution paths:
 It's a wrapper around \code{lme4::lmer} designed to automate repetitive modeling tasks.
 }
 \seealso{
-\code{\link[lme4]{lmer}}, \code{\link[emmeans]{emmeans}}, \code{\link[lmerTest]{anova}}
+\code{\link{run_omnibus_by_area}} for the non-deprecated
+replacement.
 }

@@ -1,0 +1,29 @@
+# Claude Code
+CLAUDE.md
+.claude/
+
+# macOS
+.DS_Store
+
+# R session state
+.Rhistory
+.RData
+.Ruserdata
+.Rapp.history
+
+# RStudio
+.Rproj.user/
+*.Rproj
+
+# R package build artifacts
+*.Rcheck/
+*.tar.gz
+/doc/
+/Meta/
+
+# renv / packrat
+renv/library/
+renv/local/
+renv/staging/
+packrat/lib*/
+packrat/src/

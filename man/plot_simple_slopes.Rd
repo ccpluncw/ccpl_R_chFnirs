@@ -26,7 +26,11 @@ plot_simple_slopes(
   theme_base_size = 14,
   pdf_prefix = NULL,
   pdf_width = 10,
-  pdf_height = 7
+  pdf_height = 7,
+  output_dir = ".",
+  split_by_type = TRUE,
+  show_points = FALSE,
+  point_alpha = 0.35
 )
 }
 \arguments{
@@ -118,6 +122,25 @@ plot list via \code{ggplot2::ggsave()}.}
 
 \item{pdf_width, pdf_height}{Numeric. PDF dimensions in inches.
 Defaults 10 and 7.}
+
+\item{output_dir}{Character scalar, the parent directory for PDF
+output. When \code{split_by_type = TRUE}, per-type subdirectories are
+created under this directory. Default \code{"."} (current working
+directory).}
+
+\item{split_by_type}{Logical. Write each type's PDF into
+\verb{<output_dir>/<tolower(type)>/} (\code{TRUE}, default) or write all
+PDFs flat into \code{output_dir} (\code{FALSE}).}
+
+\item{show_points}{Logical. Overlay raw subject-level points on the
+simple-slope lines. Default \code{FALSE}: in the continuous x
+continuous case the drawn lines are synthetic moderator slices
+(Mean +/- 1SD), not actual subjects, so overlaying raw points
+suggests a 1:1 correspondence that does not exist. Set to \code{TRUE}
+for exploratory inspection.}
+
+\item{point_alpha}{Numeric in (0, 1]. Alpha transparency for raw
+points when \code{show_points = TRUE}. Default \code{0.35}.}
 }
 \value{
 Invisibly returns a named nested list with one element per

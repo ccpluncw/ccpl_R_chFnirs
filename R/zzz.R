@@ -34,5 +34,7 @@ utils::globalVariables(c(
   # and passed to aes() via bare references.
   "focal",
   "y_pred",
-  "ModLevel"
+  "ModLevel",
+  # Cell label column built inside create_effect_size_heatmap()
+  "cell_label"
 ))

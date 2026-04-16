@@ -12,6 +12,9 @@ createHeatMapsFromLmerAreaAnalysis(
   dv_col = "Beta",
   area_file_type = "Channel",
   output_prefix = NULL,
+  output_dir = ".",
+  split_by_type = TRUE,
+  type_col = "type",
   significance_threshold = 0.05,
   heatmap_type = "posthoc",
   scale_type = "log",
@@ -33,7 +36,21 @@ createHeatMapsFromLmerAreaAnalysis(
 
 \item{area_file_type}{"ROI" or "Channel". Default: "Channel".}
 
-\item{output_prefix}{Base name for output files. Default: NULL.}
+\item{output_prefix}{Base name for output files (no directory
+component). Default: NULL.}
+
+\item{output_dir}{Parent directory for output files. When
+\code{split_by_type = TRUE}, per-type subdirectories are created under
+this directory. Default \code{"."} (current working directory).}
+
+\item{split_by_type}{Logical. Split \verb{_FullOutput.csv} and each
+per-type heatmap PDF into \verb{<output_dir>/<tolower(type)>/}
+subdirectories (\code{TRUE}, default) or write everything flat into
+\code{output_dir} (\code{FALSE}). The split requires a \code{type} column in
+\code{results_df}.}
+
+\item{type_col}{Name of the type column used for splitting. Default
+\code{"type"}.}
 
 \item{significance_threshold}{Threshold for asterisks. Default: 0.05.}
 
@@ -48,7 +65,7 @@ createHeatMapsFromLmerAreaAnalysis(
 \item{removeIntercept}{Remove intercept rows? Default: TRUE.}
 }
 \value{
-Nothing. Writes CSVs and PDFs to the current working directory.
+Nothing. Writes CSVs and PDFs under \code{output_dir}.
 }
 \description{
 Updated version that supports three heatmap types:
@@ -57,4 +74,10 @@ Updated version that supports three heatmap types:
 \item \strong{"posthoc"}: Red/blue signed p-values with grey for untested ROIs
 \item \strong{"activation"}: Red/blue signed p-values (for baseline comparisons, no grey)
 }
+
+When \code{split_by_type = TRUE} (default) the \verb{_FullOutput.csv} and each
+per-type heatmap PDF are written into a \verb{<output_dir>/<tolower(type)>/}
+subdirectory, one subdirectory per chromophore / measurement type.
+When \code{FALSE}, all files are written directly into \code{output_dir}
+(pre-split layout).
 }

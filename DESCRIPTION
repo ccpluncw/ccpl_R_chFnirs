@@ -32,3 +32,11 @@ Imports:
     rlang,
     sandwich,
     stringr
+Suggests:
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+Note: Development of this package was assisted by Claude (Anthropic), an AI
+    coding assistant, for code refactoring, documentation, testing, and
+    debugging. All scientific decisions, model specifications, and algorithm
+    design were made by the package authors.

@@ -21,6 +21,10 @@ CLAUDE.md
 /doc/
 /Meta/
 
+# Vignette build intermediates
+vignettes/*.aux
+vignettes/*.tex
+
 # renv / packrat
 renv/library/
 renv/local/

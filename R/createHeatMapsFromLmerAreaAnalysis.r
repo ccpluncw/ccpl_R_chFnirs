@@ -6,13 +6,30 @@
 #'   - **"posthoc"**: Red/blue signed p-values with grey for untested ROIs
 #'   - **"activation"**: Red/blue signed p-values (for baseline comparisons, no grey)
 #'
+#' When `split_by_type = TRUE` (default) the `_FullOutput.csv` and each
+#' per-type heatmap PDF are written into a `<output_dir>/<tolower(type)>/`
+#' subdirectory, one subdirectory per chromophore / measurement type.
+#' When `FALSE`, all files are written directly into `output_dir`
+#' (pre-split layout).
+#'
 #' @param results_df The dataframe of model results in long format.
 #' @param area_col The name of the column specifying the brain area.
 #' @param group_col The column to group by. If NULL, entire dataset is one group.
 #' @param sigValue_col The column containing the corrected p-values.
 #' @param dv_col The column containing the DV (for sign info). Default: "Beta".
 #' @param area_file_type "ROI" or "Channel". Default: "Channel".
-#' @param output_prefix Base name for output files. Default: NULL.
+#' @param output_prefix Base name for output files (no directory
+#'   component). Default: NULL.
+#' @param output_dir Parent directory for output files. When
+#'   `split_by_type = TRUE`, per-type subdirectories are created under
+#'   this directory. Default `"."` (current working directory).
+#' @param split_by_type Logical. Split `_FullOutput.csv` and each
+#'   per-type heatmap PDF into `<output_dir>/<tolower(type)>/`
+#'   subdirectories (`TRUE`, default) or write everything flat into
+#'   `output_dir` (`FALSE`). The split requires a `type` column in
+#'   `results_df`.
+#' @param type_col Name of the type column used for splitting. Default
+#'   `"type"`.
 #' @param significance_threshold Threshold for asterisks. Default: 0.05.
 #' @param heatmap_type One of "omnibus", "posthoc", or "activation". Default: "posthoc".
 #' @param scale_type "log" or "linear". Default: "log".
@@ -20,7 +37,7 @@
 #' @param asterisk_sz Asterisk size in mm. Default: 10.
 #' @param removeIntercept Remove intercept rows? Default: TRUE.
 #'
-#' @return Nothing. Writes CSVs and PDFs to the current working directory.
+#' @return Nothing. Writes CSVs and PDFs under `output_dir`.
 #'
 #' @importFrom utils write.table
 #'
@@ -29,6 +46,9 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
                                                 sigValue_col, dv_col = "Beta",
                                                 area_file_type = "Channel",
                                                 output_prefix = NULL,
+                                                output_dir    = ".",
+                                                split_by_type = TRUE,
+                                                type_col      = "type",
                                                 significance_threshold = 0.05,
                                                 heatmap_type = "posthoc",
                                                 scale_type = "log",
@@ -45,9 +65,40 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
     results_df$Area_ordered <- NULL
   }
 
-  # Save full output
-  write.table(results_df, paste0(output_prefix, "_FullOutput.csv"),
-              quote = FALSE, sep = ",", row.names = FALSE)
+  # --- Path helpers ---------------------------------------------------------
+  # Resolve the directory for a given type (type may be NULL if not splitting).
+  resolve_dir <- function(ty) {
+    if (split_by_type && !is.null(ty)) {
+      d <- file.path(output_dir, tolower(as.character(ty)))
+      if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
+      d
+    } else {
+      if (!dir.exists(output_dir)) {
+        dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+      }
+      output_dir
+    }
+  }
+
+  # Save full output (split per-type if requested)
+  if (split_by_type) {
+    if (!(type_col %in% colnames(results_df))) {
+      stop("`split_by_type = TRUE` requires a `", type_col,
+           "` column in `results_df`.", call. = FALSE)
+    }
+    for (ty in unique(results_df[[type_col]])) {
+      d <- resolve_dir(ty)
+      df_sub <- results_df[results_df[[type_col]] == ty, , drop = FALSE]
+      write.table(df_sub,
+                  file.path(d, paste0(output_prefix, "_FullOutput.csv")),
+                  quote = FALSE, sep = ",", row.names = FALSE)
+    }
+  } else {
+    d <- resolve_dir(NULL)
+    write.table(results_df,
+                file.path(d, paste0(output_prefix, "_FullOutput.csv")),
+                quote = FALSE, sep = ",", row.names = FALSE)
+  }
 
   # -----------------------------------------------------------------------
   # Determine output_mode based on heatmap_type
@@ -72,18 +123,21 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
                                            removeIntercept = removeIntercept)
 
   for (ty in names(out_list_discrete)) {
+    d <- resolve_dir(ty)
+    fname <- file.path(d, paste(output_prefix, ty,
+                                "Discrete_Effect_Table.pdf", sep = "_"))
     if (heatmap_type == "omnibus") {
       # For omnibus discrete, use green/white/dark green mapping
       create_forced_color_heatmap(
         out_list_discrete[[ty]], 3:ncol(out_list_discrete[[ty]]), 2,
         color_mapping = c("0" = "white", "1" = "darkgreen"),
-        file_name = paste(output_prefix, ty, "Discrete_Effect_Table.pdf", sep = "_"),
+        file_name = fname,
         fig_width = 11, fig_height = 8.5
       )
     } else {
       create_forced_color_heatmap(
         out_list_discrete[[ty]], 3:ncol(out_list_discrete[[ty]]), 2,
-        file_name = paste(output_prefix, ty, "Discrete_Effect_Table.pdf", sep = "_"),
+        file_name = fname,
         fig_width = 11, fig_height = 8.5
       )
     }
@@ -99,13 +153,16 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
                                              removeIntercept = removeIntercept)
 
   for (ty in names(out_list_continuous)) {
+    d <- resolve_dir(ty)
+    fname <- file.path(d, paste(output_prefix, ty,
+                                "Continuous_Effect_Table.pdf", sep = "_"))
     if (heatmap_type == "omnibus") {
       # Green gradient for unsigned omnibus p-values
       create_omnibus_heatmap(
         out_list_continuous[[ty]], 3:ncol(out_list_continuous[[ty]]), 2,
         scale_type = scale_type,
         log_power = log_power,
-        file_name = paste(output_prefix, ty, "Continuous_Effect_Table.pdf", sep = "_"),
+        file_name = fname,
         fig_width = 11, fig_height = 8.5,
         asterisk_size = asterisk_sz
       )
@@ -115,17 +172,17 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
         out_list_continuous[[ty]], 3:ncol(out_list_continuous[[ty]]), 2,
         scale_type = scale_type,
         log_power = log_power,
-        file_name = paste(output_prefix, ty, "Continuous_Effect_Table.pdf", sep = "_"),
+        file_name = fname,
         fig_width = 11, fig_height = 8.5,
         asterisk_size = asterisk_sz
       )
     } else {
-      # "activation" — standard red/blue, no grey (all cells are tested)
+      # "activation" - standard red/blue, no grey (all cells are tested)
       create_pvalue_heatmap(
         out_list_continuous[[ty]], 3:ncol(out_list_continuous[[ty]]), 2,
         scale_type = scale_type,
         log_power = log_power,
-        file_name = paste(output_prefix, ty, "Continuous_Effect_Table.pdf", sep = "_"),
+        file_name = fname,
         fig_width = 11, fig_height = 8.5,
         asterisk_size = asterisk_sz
       )

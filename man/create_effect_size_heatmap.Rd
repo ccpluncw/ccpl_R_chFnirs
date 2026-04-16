@@ -8,6 +8,11 @@ create_effect_size_heatmap(
   results_df,
   area_col,
   es_col,
+  p_col = NULL,
+  significance_threshold = 0.05,
+  asterisk_size = 6,
+  show_values = TRUE,
+  area_file_type = "Channel",
   group_col = NULL,
   title = NULL,
   low_color = "blue",
@@ -21,7 +26,8 @@ create_effect_size_heatmap(
   file_prefix = "EffectSize",
   fig_width = 11,
   fig_height = 8.5,
-  landscape = FALSE
+  landscape = FALSE,
+  split_by_type = TRUE
 )
 }
 \arguments{
@@ -34,6 +40,30 @@ become the x-axis of the heatmap.}
 
 \item{es_col}{Name of the column containing the effect-size values to
 plot (e.g., \code{"cohens_d"}, \code{"partial_eta_sq"}).}
+
+\item{p_col}{(Optional) Name of a column containing p-values. When
+non-NULL, cells whose p-value is at or below \code{significance_threshold}
+are marked with an asterisk. When \code{NULL} (default), no significance
+markers are drawn. Matches the \code{significance_threshold} /
+\code{asterisk_size} convention used by \code{\link[=create_omnibus_heatmap]{create_omnibus_heatmap()}} and
+\code{\link[=create_posthoc_heatmap]{create_posthoc_heatmap()}}.}
+
+\item{significance_threshold}{(Optional) P-value threshold for
+asterisks. Only used when \code{p_col} is non-NULL. Default: 0.05.}
+
+\item{asterisk_size}{(Optional) Size of asterisks in mm. Default: 6.}
+
+\item{show_values}{Logical. If \code{TRUE} (default), the numeric
+effect-size value is printed in each cell. Combined with \code{p_col},
+the four label modes are: values only (\code{show_values = TRUE},
+\code{p_col = NULL}), both (\code{TRUE}, non-NULL), asterisks only (\code{FALSE},
+non-NULL), no text (\code{FALSE}, \code{NULL}).}
+
+\item{area_file_type}{\code{"ROI"} or \code{"Channel"}. When \code{"ROI"}, the
+x-axis areas are sorted anatomically via
+\code{\link[=sort_rois_anatomically]{sort_rois_anatomically()}}, matching the behaviour of
+\code{\link[=createHeatMapsFromLmerAreaAnalysis]{createHeatMapsFromLmerAreaAnalysis()}}. Default \code{"Channel"} (no
+reordering).}
 
 \item{group_col}{(Optional) Name of a column to split on before
 plotting. One heatmap is produced per unique value. If \code{NULL}, a
@@ -66,6 +96,11 @@ Default \code{"EffectSize"}.}
 
 \item{landscape}{If \code{TRUE}, \code{fig_width} and \code{fig_height} are swapped
 before saving. Default \code{FALSE}.}
+
+\item{split_by_type}{Logical. When \code{TRUE} (default) and \code{group_col}
+is non-NULL, each group's PDF is written into
+\verb{<save_dir>/<tolower(group_level)>/} instead of flat in
+\code{save_dir}. Ignored when \code{group_col} is \code{NULL}.}
 }
 \value{
 Invisibly returns \code{NULL}. Side effect: writes one PDF per
@@ -87,11 +122,34 @@ visualized is an effect size rather than a p-value or raw coefficient.
 }
 \examples{
 \dontrun{
-# results_df from run_activation_tests() or run_gated_posthoc()
+# Values only (default) — no significance markers
 create_effect_size_heatmap(
   results_df  = my_results,
   area_col    = "area",
   es_col      = "cohens_d",
+  group_col   = "type",
+  save_dir    = "figures/effect_sizes",
+  file_prefix = "Activation"
+)
+
+# Both values and asterisks for significant cells
+create_effect_size_heatmap(
+  results_df  = my_results,
+  area_col    = "area",
+  es_col      = "cohens_d",
+  p_col       = "p_bh",
+  group_col   = "type",
+  save_dir    = "figures/effect_sizes",
+  file_prefix = "Activation"
+)
+
+# Asterisks only — no numeric labels
+create_effect_size_heatmap(
+  results_df  = my_results,
+  area_col    = "area",
+  es_col      = "cohens_d",
+  p_col       = "p_bh",
+  show_values = FALSE,
   group_col   = "type",
   save_dir    = "figures/effect_sizes",
   file_prefix = "Activation"

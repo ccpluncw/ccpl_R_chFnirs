@@ -136,6 +136,21 @@
 #'   plot list via `ggplot2::ggsave()`.
 #' @param pdf_width,pdf_height Numeric. PDF dimensions in inches.
 #'   Defaults 10 and 7.
+#' @param output_dir Character scalar, the parent directory for PDF
+#'   output. When `split_by_type = TRUE`, per-type subdirectories are
+#'   created under this directory. Default `"."` (current working
+#'   directory).
+#' @param split_by_type Logical. Write each type's PDF into
+#'   `<output_dir>/<tolower(type)>/` (`TRUE`, default) or write all
+#'   PDFs flat into `output_dir` (`FALSE`).
+#' @param show_points Logical. Overlay raw subject-level points on the
+#'   simple-slope lines. Default `FALSE`: in the continuous x
+#'   continuous case the drawn lines are synthetic moderator slices
+#'   (Mean +/- 1SD), not actual subjects, so overlaying raw points
+#'   suggests a 1:1 correspondence that does not exist. Set to `TRUE`
+#'   for exploratory inspection.
+#' @param point_alpha Numeric in (0, 1]. Alpha transparency for raw
+#'   points when `show_points = TRUE`. Default `0.35`.
 #'
 #' @return Invisibly returns a named nested list with one element per
 #'   chromophore type present in the filtered omnibus. Each element is
@@ -225,7 +240,11 @@ plot_simple_slopes <- function(
     theme_base_size  = 14,
     pdf_prefix    = NULL,
     pdf_width        = 10,
-    pdf_height       = 7
+    pdf_height       = 7,
+    output_dir       = ".",
+    split_by_type    = TRUE,
+    show_points      = FALSE,
+    point_alpha      = 0.35
 ) {
 
   # --- Validate model (required) ---
@@ -398,9 +417,30 @@ plot_simple_slopes <- function(
                          format(round(pval, 4), nsmall = 4), ")")
     }
 
-    ggplot(preds, aes(x = focal, y = y_pred,
-                      color = ModLevel, linetype = ModLevel)) +
-      geom_line(linewidth = 1.2) +
+    p <- ggplot(preds, aes(x = focal, y = y_pred,
+                           color = ModLevel, linetype = ModLevel)) +
+      geom_line(linewidth = 1.2)
+
+    if (show_points) {
+      y_col <- if (length(as.character(formula)) >= 2) {
+        as.character(formula)[2]
+      } else {
+        NULL
+      }
+      if (!is.null(y_col) && y_col %in% colnames(df_sub)) {
+        raw <- data.frame(
+          focal  = df_sub[[focal_var]],
+          y_pred = df_sub[[y_col]]
+        )
+        p <- p + ggplot2::geom_point(
+          data = raw, inherit.aes = FALSE,
+          ggplot2::aes(x = focal, y = y_pred),
+          alpha = point_alpha, color = "grey30", size = 1.2
+        )
+      }
+    }
+
+    p +
       scale_color_manual(values = colors_used) +
       scale_linetype_manual(values = ltypes_used) +
       labs(
@@ -475,7 +515,16 @@ plot_simple_slopes <- function(
       type_pages <- result[[ty]]
       if (length(type_pages) == 0) next
 
-      pdf_name <- paste0(pdf_prefix, "_", ty, "_SimpleSlopes.pdf")
+      out_subdir <- if (split_by_type) {
+        file.path(output_dir, tolower(as.character(ty)))
+      } else {
+        output_dir
+      }
+      if (!dir.exists(out_subdir)) {
+        dir.create(out_subdir, recursive = TRUE, showWarnings = FALSE)
+      }
+      pdf_name <- file.path(out_subdir,
+                            paste0(pdf_prefix, "_", ty, "_SimpleSlopes.pdf"))
       grDevices::pdf(pdf_name, width = pdf_width, height = pdf_height)
       for (cell_name in names(type_pages)) {
         cell <- type_pages[[cell_name]]

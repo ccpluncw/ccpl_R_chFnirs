@@ -46,7 +46,7 @@ The package contains 26 exported functions (plus 1 internal helper) organized in
 | **Activation & slopes** | `run_activation_tests`, `run_slopes_vs_zero` | Ungated marginal-mean and slope-vs-zero tests |
 | **Gated post-hocs** | `run_gated_posthoc`, `run_gated_slopes` | Pairwise contrasts gated on omnibus significance |
 | **Visualization** | `createHeatMapsFromLmerAreaAnalysis`, `CreateSigBetaTable`, `create_pvalue_heatmap`, `create_posthoc_heatmap`, `create_omnibus_heatmap`, `create_forced_color_heatmap`, `create_effect_size_heatmap`, `plot_simple_slopes`, `plot_slope_lines` | Heatmaps and slope plots |
-| **Utilities** | `getBHvalues`, `getQvalues`, `compute_cohens_d`, `compute_partial_eta_sq`, `has_tested_results`, `standardize_emmeans_columns`, `write_results_by_type`, `sort_rois_anatomically`, `shorten_string`, `run_lmer_analysis_by_area` (deprecated) | Effect sizes, p-value adjustment, column renaming, I/O |
+| **Utilities** | `getBHvalues`, `getQvalues`, `compute_cohens_d`, `compute_partial_eta_sq`, `has_tested_results`, `standardize_emmeans_columns`, `write_results_by_type`, `sort_rois_anatomically`, `sort_fnirs_channels_by_name`, `heatmap_height`, `shorten_string`, `run_lmer_analysis_by_area` (deprecated) | Effect sizes, p-value adjustment, column renaming, I/O, sorting, sizing |
 | **Internal** | `iterate_by_area` | Shared iteration engine for Tier 2 analysis functions |
 
 ## Output column schema
@@ -423,7 +423,7 @@ df.h.posthoc <- run_gated_slopes(
 
 ## `createHeatMapsFromLmerAreaAnalysis`
 
-High-level wrapper that generates heatmaps and CSV files from model results. Dispatches to `CreateSigBetaTable` for reshaping and then to the appropriate heatmap function based on `heatmap_type`. Supports per-type subdirectory output and anatomical ROI sorting.
+High-level wrapper that generates heatmaps and CSV files from model results. Dispatches to `CreateSigBetaTable` for reshaping and then to the appropriate heatmap function based on `heatmap_type`. Supports per-type subdirectory output and a caller-supplied x-axis ordering via `area_order` (see "Pluggable area sorters" below).
 
 ### Usage
 
@@ -431,7 +431,7 @@ High-level wrapper that generates heatmaps and CSV files from model results. Dis
 createHeatMapsFromLmerAreaAnalysis(
   results_df, area_col, group_col, sigValue_col,
   dv_col         = "Beta",
-  area_file_type = "Channel",
+  area_order     = NULL,
   output_prefix  = NULL,
   output_dir     = ".",
   split_by_type  = TRUE,
@@ -441,6 +441,8 @@ createHeatMapsFromLmerAreaAnalysis(
   scale_type     = "log",
   log_power      = 0.2,
   asterisk_sz    = 10,
+  fig_width      = 11,
+  fig_height     = 8.5,
   removeIntercept = TRUE
 )
 ```
@@ -454,7 +456,7 @@ createHeatMapsFromLmerAreaAnalysis(
 | `group_col` | string/NULL | | Column to group by (e.g., `"type"`). |
 | `sigValue_col` | string | | Corrected p-value column. |
 | `dv_col` | string | `"Beta"` | Column whose sign gives effect direction. |
-| `area_file_type` | string | `"Channel"` | `"ROI"` for anatomical sorting. |
+| `area_order` | char vec/NULL | `NULL` | Desired x-axis order. Precompute with `sort_rois_anatomically()` (ROIs) or `sort_fnirs_channels_by_name()` (channels). `NULL` = order of occurrence. |
 | `output_prefix` | string | `NULL` | Base name for output files. |
 | `output_dir` | string | `"."` | Parent output directory. |
 | `split_by_type` | logical | `TRUE` | Write per-type subdirectories. |
@@ -462,6 +464,8 @@ createHeatMapsFromLmerAreaAnalysis(
 | `scale_type` | string | `"log"` | `"log"` or `"linear"`. |
 | `log_power` | numeric | `0.2` | Controls log scale intensity. |
 | `asterisk_sz` | numeric | `10` | Asterisk size in mm. |
+| `fig_width` | numeric | `11` | Figure width in inches, forwarded to all primitive heatmap calls. |
+| `fig_height` | numeric | `8.5` | Figure height in inches, forwarded to all primitive heatmap calls. |
 | `removeIntercept` | logical | `TRUE` | Drop intercept rows. |
 
 ### Return value
@@ -512,7 +516,7 @@ Named list of wide data frames, one per level of `group_col` (or one named `"all
 
 ## `create_effect_size_heatmap`
 
-Draws one heatmap of effect-size values (e.g., Cohen's d, partial eta-squared) per level of an optional grouping column. Uses a diverging blue--white--red palette when values include negatives (centered at zero), otherwise a sequential white--orange palette. Supports optional significance asterisks, numeric value labels, and anatomical ROI sorting.
+Draws one heatmap of effect-size values (e.g., Cohen's d, partial eta-squared) per level of an optional grouping column. Uses a diverging blue--white--red palette when values include negatives (centered at zero), otherwise a sequential white--orange palette. Supports optional significance asterisks, numeric value labels, and a caller-supplied x-axis ordering via `area_order` (see "Pluggable area sorters" below).
 
 ### Usage
 
@@ -525,7 +529,7 @@ create_effect_size_heatmap(
   significance_threshold = 0.05,
   asterisk_size      = 6,
   show_values        = TRUE,
-  area_file_type     = "Channel",
+  area_order         = NULL,
   group_col          = NULL,
   title              = NULL,
   low_color          = "blue",
@@ -555,7 +559,7 @@ create_effect_size_heatmap(
 | `significance_threshold` | numeric | `0.05` | P-value threshold for asterisks. |
 | `asterisk_size` | numeric | `6` | Asterisk size in mm. |
 | `show_values` | logical | `TRUE` | Print numeric effect sizes in cells. |
-| `area_file_type` | string | `"Channel"` | `"ROI"` for anatomical sorting via `sort_rois_anatomically()`. |
+| `area_order` | char vec/NULL | `NULL` | Desired x-axis order. Precompute with `sort_rois_anatomically()` (ROIs) or `sort_fnirs_channels_by_name()` (channels). `NULL` = order of occurrence. |
 | `group_col` | string/NULL | `NULL` | Split column (one heatmap per group). |
 | `split_by_type` | logical | `TRUE` | Route per-group PDFs to subdirectories. |
 
@@ -574,13 +578,15 @@ The four cell-label modes are controlled by `show_values` and `p_col`:
 
 ```{r}
 # Asterisks only, anatomically sorted ROIs
+roi_order <- sort_rois_anatomically(unique(df.activation$area))
+
 create_effect_size_heatmap(
   results_df  = df.activation,
   area_col    = "area",
   es_col      = "cohens_d",
   p_col       = "p_bh",
   show_values = FALSE,
-  area_file_type = "ROI",
+  area_order  = roi_order,
   group_col   = "type",
   file_prefix = "Activation_byCond"
 )
@@ -947,6 +953,79 @@ sort_rois_anatomically(roi_vector)
 ### Return value
 
 Character vector of sorted ROI names. Unrecognized ROIs are placed at the end with a warning.
+
+## `sort_fnirs_channels_by_name`
+
+Channel-side companion to `sort_rois_anatomically`. Parses fNIRS channel names of the form `"Ch_<source>_<detector>"`, looks up source/detector positions in a `digpts.txt` file, groups channels into anterior--posterior bands (gap-detected by default), and sorts left-to-right within each band. Returns the input names in plotting order; per-channel diagnostics (parsed coordinates, band assignment, final order index) are attached as `attr(result, "diagnostics")`.
+
+### Usage
+
+```{r}
+sort_fnirs_channels_by_name(
+  channel_names, digpts_path,
+  n_bands = 2, y_breaks = NULL,
+  channel_parser = NULL, verbose = FALSE
+)
+```
+
+### Arguments
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `channel_names` | char vec | | Channel names (e.g., `c("Ch_1_1", "Ch_2_3", ...)`). |
+| `digpts_path` | string | | Path to a `digpts.txt` file with `s1: x y z`-style lines. |
+| `n_bands` | integer | `2` | Number of anterior--posterior bands. |
+| `y_breaks` | numeric/NULL | `NULL` | Explicit band boundaries (overrides `n_bands`). |
+| `channel_parser` | function/NULL | `NULL` | Custom parser; default handles `Ch_<s>_<d>`. |
+| `verbose` | logical | `FALSE` | Print orientation and band summary. |
+
+### Return value
+
+Character vector of input channel names in plotting order, with diagnostics attached as an attribute.
+
+## Pluggable area sorters
+
+`createHeatMapsFromLmerAreaAnalysis()` and `create_effect_size_heatmap()` accept any sort function that satisfies the contract `function(names, ...) -> ordered names`. Both `sort_rois_anatomically()` and `sort_fnirs_channels_by_name()` satisfy it, and they are interchangeable behind the heatmap `area_order` argument. Custom sorters (e.g., by effect size, by region size, by Brodmann area) plug in the same way --- precompute the order, pass it as `area_order`, and the heatmap will render columns in that order. When `area_order = NULL`, columns appear in the order they occur in `results_df`.
+
+## `heatmap_height`
+
+Returns a `fig_height` value (in inches) scaled so each heatmap row keeps roughly the same visual height regardless of how many predictors are in the data. Reserves a fixed margin for title, rotated x-axis labels, and plot padding, then divides the remaining chart strip evenly among the rows up to `full_n`; caps at `full_height` thereafter.
+
+### Usage
+
+```{r}
+heatmap_height(
+  df,
+  full_height     = 8.5,
+  full_n          = 10,
+  margin          = 2,
+  pred_col        = "predictor",
+  removeIntercept = TRUE
+)
+```
+
+### Arguments
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `df` | data.frame | | Long-format data whose `pred_col` becomes heatmap rows. |
+| `full_height` | numeric | `8.5` | Figure height in inches at and above the cap. |
+| `full_n` | numeric | `10` | Row count at which the figure reaches `full_height`. Increase for smaller rows. |
+| `margin` | numeric | `2` | Inches reserved for non-chart elements. |
+| `pred_col` | string | `"predictor"` | Name of predictor column in `df`. |
+| `removeIntercept` | logical | `TRUE` | Drop predictors whose name contains `"Intercept"`. |
+
+### Typical use
+
+```{r}
+createHeatMapsFromLmerAreaAnalysis(
+  results_df = df.posthoc, area_col = "area", group_col = "type",
+  sigValue_col = "p_bon", dv_col = "estimate",
+  area_order = sort_rois_anatomically(unique(df.posthoc$area)),
+  fig_height = heatmap_height(df.posthoc),
+  output_prefix = "PostHoc"
+)
+```
 
 ## `shorten_string`
 

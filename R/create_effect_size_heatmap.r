@@ -34,11 +34,13 @@
 #'   the four label modes are: values only (`show_values = TRUE`,
 #'   `p_col = NULL`), both (`TRUE`, non-NULL), asterisks only (`FALSE`,
 #'   non-NULL), no text (`FALSE`, `NULL`).
-#' @param area_file_type `"ROI"` or `"Channel"`. When `"ROI"`, the
-#'   x-axis areas are sorted anatomically via
-#'   [sort_rois_anatomically()], matching the behaviour of
-#'   [createHeatMapsFromLmerAreaAnalysis()]. Default `"Channel"` (no
-#'   reordering).
+#' @param area_order Optional character vector specifying the desired
+#'   x-axis order of `area_col` levels. If `NULL` (default), areas
+#'   appear in the order they occur in `results_df`. To sort
+#'   anatomically, precompute the order with [sort_rois_anatomically()]
+#'   (for ROI data) or [sort_fnirs_channels_by_name()] (for channel
+#'   data) and pass the result here. Any sort function with signature
+#'   `function(names, ...) -> ordered names` can be used.
 #' @param group_col (Optional) Name of a column to split on before
 #'   plotting. One heatmap is produced per unique value. If `NULL`, a
 #'   single heatmap of the entire dataset is produced. Default `NULL`.
@@ -121,7 +123,7 @@ create_effect_size_heatmap <- function(
     significance_threshold = 0.05,
     asterisk_size  = 6,
     show_values    = TRUE,
-    area_file_type = "Channel",
+    area_order     = NULL,
     group_col      = NULL,
     title          = NULL,
     low_color      = "blue",
@@ -154,12 +156,16 @@ create_effect_size_heatmap <- function(
     stop("p_col '", p_col, "' not found in results_df.")
   }
 
-  # Sort ROIs anatomically if applicable
-  if (area_file_type == "ROI") {
-    areas <- unique(results_df[[area_col]])
-    desired_anatomical_order <- sort_rois_anatomically(areas)
+  # Apply caller-supplied area ordering, if any
+  if (!is.null(area_order)) {
+    missing_levels <- setdiff(unique(results_df[[area_col]]), area_order)
+    if (length(missing_levels) > 0) {
+      stop("area_order is missing ", length(missing_levels),
+           " level(s) present in `", area_col, "`: ",
+           paste(missing_levels, collapse = ", "), call. = FALSE)
+    }
     results_df$Area_ordered <- factor(results_df[[area_col]],
-                                      levels = desired_anatomical_order)
+                                      levels = area_order)
     results_df <- results_df[order(results_df$Area_ordered), ]
     results_df$Area_ordered <- NULL
   }

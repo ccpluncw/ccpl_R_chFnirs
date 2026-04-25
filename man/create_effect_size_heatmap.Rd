@@ -12,7 +12,7 @@ create_effect_size_heatmap(
   significance_threshold = 0.05,
   asterisk_size = 6,
   show_values = TRUE,
-  area_file_type = "Channel",
+  area_order = NULL,
   group_col = NULL,
   title = NULL,
   low_color = "blue",
@@ -59,11 +59,13 @@ the four label modes are: values only (\code{show_values = TRUE},
 \code{p_col = NULL}), both (\code{TRUE}, non-NULL), asterisks only (\code{FALSE},
 non-NULL), no text (\code{FALSE}, \code{NULL}).}
 
-\item{area_file_type}{\code{"ROI"} or \code{"Channel"}. When \code{"ROI"}, the
-x-axis areas are sorted anatomically via
-\code{\link[=sort_rois_anatomically]{sort_rois_anatomically()}}, matching the behaviour of
-\code{\link[=createHeatMapsFromLmerAreaAnalysis]{createHeatMapsFromLmerAreaAnalysis()}}. Default \code{"Channel"} (no
-reordering).}
+\item{area_order}{Optional character vector specifying the desired
+x-axis order of \code{area_col} levels. If \code{NULL} (default), areas
+appear in the order they occur in \code{results_df}. To sort
+anatomically, precompute the order with \code{\link[=sort_rois_anatomically]{sort_rois_anatomically()}}
+(for ROI data) or \code{\link[=sort_fnirs_channels_by_name]{sort_fnirs_channels_by_name()}} (for channel
+data) and pass the result here. Any sort function with signature
+\verb{function(names, ...) -> ordered names} can be used.}
 
 \item{group_col}{(Optional) Name of a column to split on before
 plotting. One heatmap is produced per unique value. If \code{NULL}, a

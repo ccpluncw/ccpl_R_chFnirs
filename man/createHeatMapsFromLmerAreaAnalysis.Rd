@@ -10,7 +10,7 @@ createHeatMapsFromLmerAreaAnalysis(
   group_col,
   sigValue_col,
   dv_col = "Beta",
-  area_file_type = "Channel",
+  area_order = NULL,
   output_prefix = NULL,
   output_dir = ".",
   split_by_type = TRUE,
@@ -20,6 +20,8 @@ createHeatMapsFromLmerAreaAnalysis(
   scale_type = "log",
   log_power = 0.2,
   asterisk_sz = 10,
+  fig_width = 11,
+  fig_height = 8.5,
   removeIntercept = TRUE
 )
 }
@@ -34,7 +36,13 @@ createHeatMapsFromLmerAreaAnalysis(
 
 \item{dv_col}{The column containing the DV (for sign info). Default: "Beta".}
 
-\item{area_file_type}{"ROI" or "Channel". Default: "Channel".}
+\item{area_order}{Optional character vector specifying the desired
+x-axis order of \code{area_col} levels. If \code{NULL} (default), areas
+appear in the order they occur in \code{results_df}. To sort
+anatomically, precompute the order with \code{\link[=sort_rois_anatomically]{sort_rois_anatomically()}}
+(for ROI data) or \code{\link[=sort_fnirs_channels_by_name]{sort_fnirs_channels_by_name()}} (for channel
+data) and pass the result here. Any sort function with signature
+\verb{function(names, ...) -> ordered names} can be used.}
 
 \item{output_prefix}{Base name for output files (no directory
 component). Default: NULL.}
@@ -61,6 +69,16 @@ subdirectories (\code{TRUE}, default) or write everything flat into
 \item{log_power}{Controls log scale intensity. Default: 0.2.}
 
 \item{asterisk_sz}{Asterisk size in mm. Default: 10.}
+
+\item{fig_width}{Figure width in inches, forwarded to every primitive
+heatmap call inside this wrapper. Default: 11.}
+
+\item{fig_height}{Figure height in inches, forwarded to every
+primitive heatmap call inside this wrapper. Default: 8.5. Reduce
+when a heatmap has fewer rows than usual so each row keeps its
+typical visual height; a small helper such as
+\code{heatmap_height(df, full_n = 6)} in the calling script is one
+way to compute this.}
 
 \item{removeIntercept}{Remove intercept rows? Default: TRUE.}
 }

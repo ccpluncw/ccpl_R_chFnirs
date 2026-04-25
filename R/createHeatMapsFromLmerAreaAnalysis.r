@@ -17,7 +17,13 @@
 #' @param group_col The column to group by. If NULL, entire dataset is one group.
 #' @param sigValue_col The column containing the corrected p-values.
 #' @param dv_col The column containing the DV (for sign info). Default: "Beta".
-#' @param area_file_type "ROI" or "Channel". Default: "Channel".
+#' @param area_order Optional character vector specifying the desired
+#'   x-axis order of `area_col` levels. If `NULL` (default), areas
+#'   appear in the order they occur in `results_df`. To sort
+#'   anatomically, precompute the order with [sort_rois_anatomically()]
+#'   (for ROI data) or [sort_fnirs_channels_by_name()] (for channel
+#'   data) and pass the result here. Any sort function with signature
+#'   `function(names, ...) -> ordered names` can be used.
 #' @param output_prefix Base name for output files (no directory
 #'   component). Default: NULL.
 #' @param output_dir Parent directory for output files. When
@@ -35,6 +41,14 @@
 #' @param scale_type "log" or "linear". Default: "log".
 #' @param log_power Controls log scale intensity. Default: 0.2.
 #' @param asterisk_sz Asterisk size in mm. Default: 10.
+#' @param fig_width Figure width in inches, forwarded to every primitive
+#'   heatmap call inside this wrapper. Default: 11.
+#' @param fig_height Figure height in inches, forwarded to every
+#'   primitive heatmap call inside this wrapper. Default: 8.5. Reduce
+#'   when a heatmap has fewer rows than usual so each row keeps its
+#'   typical visual height; a small helper such as
+#'   `heatmap_height(df, full_n = 6)` in the calling script is one
+#'   way to compute this.
 #' @param removeIntercept Remove intercept rows? Default: TRUE.
 #'
 #' @return Nothing. Writes CSVs and PDFs under `output_dir`.
@@ -44,7 +58,7 @@
 #' @export
 createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
                                                 sigValue_col, dv_col = "Beta",
-                                                area_file_type = "Channel",
+                                                area_order = NULL,
                                                 output_prefix = NULL,
                                                 output_dir    = ".",
                                                 split_by_type = TRUE,
@@ -54,13 +68,19 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
                                                 scale_type = "log",
                                                 log_power = 0.2,
                                                 asterisk_sz = 10,
+                                                fig_width = 11,
+                                                fig_height = 8.5,
                                                 removeIntercept = TRUE) {
 
-  # Sort ROIs anatomically if applicable
-  if (area_file_type == "ROI") {
-    areas <- unique(results_df[[area_col]])
-    desired_anatomical_order <- sort_rois_anatomically(areas)
-    results_df$Area_ordered <- factor(results_df[[area_col]], levels = desired_anatomical_order)
+  # Apply caller-supplied area ordering, if any
+  if (!is.null(area_order)) {
+    missing_levels <- setdiff(unique(results_df[[area_col]]), area_order)
+    if (length(missing_levels) > 0) {
+      stop("area_order is missing ", length(missing_levels),
+           " level(s) present in `", area_col, "`: ",
+           paste(missing_levels, collapse = ", "), call. = FALSE)
+    }
+    results_df$Area_ordered <- factor(results_df[[area_col]], levels = area_order)
     results_df <- results_df[order(results_df$Area_ordered), ]
     results_df$Area_ordered <- NULL
   }
@@ -132,13 +152,13 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
         out_list_discrete[[ty]], 3:ncol(out_list_discrete[[ty]]), 2,
         color_mapping = c("0" = "white", "1" = "darkgreen"),
         file_name = fname,
-        fig_width = 11, fig_height = 8.5
+        fig_width = fig_width, fig_height = fig_height
       )
     } else {
       create_forced_color_heatmap(
         out_list_discrete[[ty]], 3:ncol(out_list_discrete[[ty]]), 2,
         file_name = fname,
-        fig_width = 11, fig_height = 8.5
+        fig_width = fig_width, fig_height = fig_height
       )
     }
   }
@@ -163,7 +183,7 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
         scale_type = scale_type,
         log_power = log_power,
         file_name = fname,
-        fig_width = 11, fig_height = 8.5,
+        fig_width = fig_width, fig_height = fig_height,
         asterisk_size = asterisk_sz
       )
     } else if (heatmap_type == "posthoc") {
@@ -173,7 +193,7 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
         scale_type = scale_type,
         log_power = log_power,
         file_name = fname,
-        fig_width = 11, fig_height = 8.5,
+        fig_width = fig_width, fig_height = fig_height,
         asterisk_size = asterisk_sz
       )
     } else {
@@ -183,7 +203,7 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
         scale_type = scale_type,
         log_power = log_power,
         file_name = fname,
-        fig_width = 11, fig_height = 8.5,
+        fig_width = fig_width, fig_height = fig_height,
         asterisk_size = asterisk_sz
       )
     }

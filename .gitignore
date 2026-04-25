@@ -24,6 +24,9 @@ CLAUDE.md
 # Vignette build intermediates
 vignettes/*.aux
 vignettes/*.tex
+vignettes/*.toc
+vignettes/*_cache/
+vignettes/*_files/
 
 # renv / packrat
 renv/library/

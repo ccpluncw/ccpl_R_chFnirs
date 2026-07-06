@@ -27,7 +27,12 @@ create_effect_size_heatmap(
   fig_width = 11,
   fig_height = 8.5,
   landscape = FALSE,
-  split_by_type = TRUE
+  split_by_type = TRUE,
+  show_legend = TRUE,
+  value_limits = NULL,
+  legend_breaks = NULL,
+  pos_legend_title = NULL,
+  neg_legend_title = NULL
 )
 }
 \arguments{
@@ -103,6 +108,36 @@ before saving. Default \code{FALSE}.}
 is non-NULL, each group's PDF is written into
 \verb{<save_dir>/<tolower(group_level)>/} instead of flat in
 \code{save_dir}. Ignored when \code{group_col} is \code{NULL}.}
+
+\item{show_legend}{Logical. If \code{TRUE} (default), the fill-scale
+legend is rendered. If \code{FALSE}, the legend is suppressed --
+useful for publication panels that share a single legend
+exported via \code{\link[=create_heatmap_legend]{create_heatmap_legend()}}.}
+
+\item{value_limits}{Numeric length-2 vector giving the colorbar's
+numeric domain. For diverging palettes (effect-size data
+contains negatives), pass e.g. \code{c(-1, 1)} for Cohen's d -- the
+positive colorbar then spans \code{c(0, 1)} and the negative spans
+\code{c(-1, 0)}. For sequential palettes (all non-negative), pass
+e.g. \code{c(0, 0.2)} for partial η². When \code{NULL} (default), limits
+are auto-computed from the data range. There is no universal
+default -- pick limits that match the effect-size scale you
+are plotting.}
+
+\item{legend_breaks}{Numeric vector of values to label on the
+colorbar (e.g., \code{c(-0.8, -0.5, -0.2, 0.2, 0.5, 0.8)} for
+Cohen's d, or \code{c(0.01, 0.06, 0.14)} for partial η²). For
+diverging palettes the function automatically routes
+non-negative values to the positive colorbar and negative
+values to the negative colorbar. When \code{NULL} (default), ggplot
+chooses break positions automatically.}
+
+\item{pos_legend_title}{Title for the positive colorbar
+(diverging case) or for the sole colorbar (sequential case).
+When \code{NULL} (default), uses \code{es_col}.}
+
+\item{neg_legend_title}{Title for the negative colorbar.
+Diverging case only. When \code{NULL} (default), uses \code{es_col}.}
 }
 \value{
 Invisibly returns \code{NULL}. Side effect: writes one PDF per

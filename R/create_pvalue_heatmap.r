@@ -32,6 +32,10 @@
 #' @param fig_height (Optional) Figure height in inches. Default: 11.
 #' @param title (Optional) The title of the heatmap. Default: "P-Value Heatmap".
 #' @param landscape (Optional) If TRUE, swaps figure width/height. Default: FALSE.
+#' @param show_legend (Optional) If `TRUE` (default), the side legend
+#'   is rendered. If `FALSE`, the legend is suppressed -- useful for
+#'   publication panels that share a single legend exported via
+#'   [create_heatmap_legend()].
 #'
 #' @return Saves a plot to a file and prints a confirmation message to the console.
 #'
@@ -95,7 +99,8 @@ create_pvalue_heatmap <- function(
     fig_width = 8.5,
     fig_height = 11,
     title = "Adjusted P-Value Heatmap",
-    landscape = FALSE
+    landscape = FALSE,
+    show_legend = TRUE
 ) {
     # --- 1. Data Preparation ---
     original_x_order <- colnames(table_data)[data_col_indices]
@@ -163,7 +168,7 @@ create_pvalue_heatmap <- function(
             legend.text = element_text(size = 10),
             panel.grid.major = element_blank(),
             panel.grid.minor = element_blank(),
-            legend.position = "right",
+            legend.position = if (show_legend) "right" else "none",
             legend.box = "vertical"
         )
 

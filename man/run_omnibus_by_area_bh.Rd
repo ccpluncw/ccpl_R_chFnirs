@@ -13,6 +13,7 @@ run_omnibus_by_area_bh(
   vcov = NULL,
   min_rows = 5,
   effect_size = TRUE,
+  refit_singular = TRUE,
   bh_group_col = c("type", "effect"),
   bh_p_val_col = "p_value"
 )
@@ -54,6 +55,20 @@ argument for a future opt-out but the output schema always
 includes a \code{partial_eta_sq} column. When \code{model = "lmer"} the
 column is populated with \code{NA_real_} because mixed-model ANOVA
 tables do not expose sums of squares.}
+
+\item{refit_singular}{Logical. Only consulted when \code{model = "lmer"}.
+When \code{TRUE} (the default), any per-cell lmer fit that comes back
+singular (random-effect variance collapsed to the zero boundary,
+per \code{lme4::isSingular()}) is refit with a weak variance prior via
+\code{blme::blmer()} and coerced back through \code{lmerTest} so the ANOVA
+still reports Satterthwaite denominator df. This lifts the
+variance off the boundary and restores subject-level df for the
+between-subjects effects, which a singular fit otherwise inflates
+to the OLS residual (observation-level) df. Set to \code{FALSE} to keep
+the raw singular fit unchanged (the pre-remedy behaviour). The
+\code{singular} output column records, per cell, whether the original
+lmer fit was singular regardless of this setting. Requires the
+\code{blme} package (Suggests) when a refit is actually triggered.}
 
 \item{bh_group_col}{Character vector naming one or more columns
 in the omnibus table to group by when applying BH correction.

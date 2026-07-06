@@ -9,6 +9,8 @@ heatmap_height(
   full_height = 8.5,
   full_n = 10,
   margin = 2,
+  show_legend = TRUE,
+  min_height = NULL,
   pred_col = "predictor",
   removeIntercept = TRUE
 )
@@ -29,6 +31,17 @@ rotated x-axis labels, plot padding). Default \code{2}. Tune if rows
 look too cramped (decrease) or too generous (increase) at small
 \code{n}.}
 
+\item{show_legend}{Logical. Whether the heatmap this height feeds
+will be rendered with its side legend. Used to pick the default
+\code{min_height}. Default \code{TRUE} (matches the heatmap functions'
+default).}
+
+\item{min_height}{Numeric floor on the returned height, in inches.
+When \code{NULL} (default), resolves to \code{5} if \code{show_legend} is \code{TRUE}
+(enough to fit the typical positive + negative colorbar legend
+stack with the not-tested swatch) or \code{3} if \code{show_legend} is
+\code{FALSE}. Pass an explicit value to override.}
+
 \item{pred_col}{Name of the predictor column in \code{df}. Default
 \code{"predictor"}, matching the Tier 2 chFnirs output schema.}
 
@@ -43,7 +56,9 @@ Returns a \code{fig_height} value (in inches) suitable for passing to
 \code{\link[=createHeatMapsFromLmerAreaAnalysis]{createHeatMapsFromLmerAreaAnalysis()}}, \code{\link[=create_effect_size_heatmap]{create_effect_size_heatmap()}},
 or any of the primitive \verb{create_*_heatmap()} functions, scaled so
 each row of the heatmap keeps roughly the same visual height
-regardless of how many predictors the data contains.
+regardless of how many predictors the data contains, and floored at
+a minimum height that ensures the side legend (when present) is
+fully visible.
 }
 \details{
 Heatmaps reserve a fixed band of vertical space for the title,
@@ -55,6 +70,21 @@ instead holds the chart strip per row constant for \code{n} between 1
 and \code{full_n}, accounting for \code{margin} overhead, and caps the
 figure at \code{full_height} once \code{n >= full_n}. Above the cap, rows
 shrink to fit the capped figure.
+
+At very small \code{n} the row-scaled figure can still be shorter than
+the side-legend stack itself, which produces a clipped legend
+(the colorbar headers or end labels disappear off the top or
+bottom of the figure). \code{min_height} enforces a floor below which
+the figure does not shrink, so the legend always renders fully.
+At small \code{n} the rows are slightly taller than at \code{full_n} -- an
+acceptable trade for a complete legend.
+
+When \code{show_legend = FALSE} the figure has no side-legend constraint
+(the heatmap is being rendered without its legend, e.g. for a
+publication panel that uses a single shared legend exported via
+\code{\link[=create_heatmap_legend]{create_heatmap_legend()}}). In that case the floor drops from the
+default 5 inches to 3 inches -- still enough for the title +
+rotated x-axis labels + a couple of rows.
 
 Predictors whose name contains \code{"Intercept"} are excluded from the
 row count by default, matching the chFnirs heatmap pipelines'
@@ -71,8 +101,12 @@ createHeatMapsFromLmerAreaAnalysis(
   output_prefix = "PostHoc"
 )
 
-# Tune the cap point and margin if rows look off
-heatmap_height(df, full_n = 8, margin = 1.5)
+# Publication panel: heatmap without its legend, smaller floor
+fh <- heatmap_height(df.posthoc, show_legend = FALSE)
+create_posthoc_heatmap(..., show_legend = FALSE, fig_height = fh)
+
+# Explicit floor override
+heatmap_height(df, min_height = 6)
 }
 
 }

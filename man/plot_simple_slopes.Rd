@@ -15,6 +15,7 @@ plot_simple_slopes(
   model,
   vcov = NULL,
   effect_pattern = paste0("\\\\b", var1, "\\\\b.*\\\\b", var2, "\\\\b"),
+  facet_by = NULL,
   p_col = "p_bh",
   p_threshold = 0.05,
   gate = TRUE,
@@ -30,6 +31,8 @@ plot_simple_slopes(
   output_dir = ".",
   split_by_type = TRUE,
   show_points = FALSE,
+  points_aggregate = c("auto", "never"),
+  id_col = "ID",
   point_alpha = 0.35
 )
 }
@@ -67,6 +70,22 @@ conditional default.}
 \code{omnibus_df$effect} to identify the interaction effect(s) of
 interest. Default matches any effect name containing \code{var1} and
 \code{var2} as whole words in either order.}
+
+\item{facet_by}{Character vector of factor names to facet the
+resulting plot by, or \code{NULL} (default) for auto-detection. When
+the matched effect is a pure 2-way \code{var1:var2}, no faceting is
+needed and the function behaves identically to the unfaceted
+form. When the matched effect is higher-order (e.g.,
+\code{cond:var1:var2}, \code{Group:var1:var2}, or the 4-way
+\code{Group:cond:var1:var2}), the var1xvar2 surface differs across
+levels of the extra factor(s), and a single unfaceted slice is
+misleading. Auto-detection tokenizes the matched effect string
+on \code{":"}, removes \code{var1}/\code{var2}, and keeps tokens that are
+columns in \code{data} — so a \code{cond:var1:var2} effect auto-facets by
+\code{cond}. One facet variable -> \code{facet_wrap}; two -> \code{facet_grid}
+on the first two; more -> \code{facet_wrap} on the interaction (with
+an info message). Pass an explicit character vector to override
+the auto-detection.}
 
 \item{p_col}{Character scalar naming the gate column in
 \code{omnibus_df}. Default \code{"p_bh"}. Ignored when \code{gate = FALSE}.}
@@ -138,6 +157,20 @@ continuous case the drawn lines are synthetic moderator slices
 (Mean +/- 1SD), not actual subjects, so overlaying raw points
 suggests a 1:1 correspondence that does not exist. Set to \code{TRUE}
 for exploratory inspection.}
+
+\item{points_aggregate}{One of \code{"auto"} (default) or \code{"never"}.
+Controls whether overlaid raw-data points are aggregated to
+subject-level. With long-format input (one row per
+Subject x within-subject factor) and between-subject moderators
+(e.g., a hormone z-score), plotting rows as-is over-plots each
+subject once per within-subject level — every subject contributes
+multiple dots stacked at their single x-value. \code{"auto"} groups
+by \code{id_col} and plots one mean dot per subject so the dot count
+matches N. Only takes effect when \code{show_points = TRUE}.}
+
+\item{id_col}{Character scalar naming the subject-ID column in
+\code{data}. Required when \code{points_aggregate = "auto"} and
+\code{show_points = TRUE}. Default \code{"ID"}.}
 
 \item{point_alpha}{Numeric in (0, 1]. Alpha transparency for raw
 points when \code{show_points = TRUE}. Default \code{0.35}.}

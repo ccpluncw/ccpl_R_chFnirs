@@ -79,6 +79,7 @@ run_omnibus_by_area_bh <- function(data,
                                    vcov         = NULL,
                                    min_rows     = 5,
                                    effect_size  = TRUE,
+                                   refit_singular = TRUE,
                                    bh_group_col = c("type", "effect"),
                                    bh_p_val_col = "p_value") {
 
@@ -90,7 +91,8 @@ run_omnibus_by_area_bh <- function(data,
     model       = model,
     vcov        = vcov,
     min_rows    = min_rows,
-    effect_size = effect_size
+    effect_size = effect_size,
+    refit_singular = refit_singular
   )
 
   if (is.null(omnibus_df) || nrow(omnibus_df) == 0) return(omnibus_df)

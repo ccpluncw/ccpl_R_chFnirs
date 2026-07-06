@@ -23,7 +23,8 @@ create_pvalue_heatmap(
   fig_width = 8.5,
   fig_height = 11,
   title = "Adjusted P-Value Heatmap",
-  landscape = FALSE
+  landscape = FALSE,
+  show_legend = TRUE
 )
 }
 \arguments{
@@ -69,6 +70,11 @@ Default: \code{"Negative Effect"}.}
 \item{title}{(Optional) The title of the heatmap. Default: "P-Value Heatmap".}
 
 \item{landscape}{(Optional) If TRUE, swaps figure width/height. Default: FALSE.}
+
+\item{show_legend}{(Optional) If \code{TRUE} (default), the side legend
+is rendered. If \code{FALSE}, the legend is suppressed -- useful for
+publication panels that share a single legend exported via
+\code{\link[=create_heatmap_legend]{create_heatmap_legend()}}.}
 }
 \value{
 Saves a plot to a file and prints a confirmation message to the console.

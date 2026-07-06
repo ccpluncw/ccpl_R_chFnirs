@@ -5,7 +5,9 @@
 #' [createHeatMapsFromLmerAreaAnalysis()], [create_effect_size_heatmap()],
 #' or any of the primitive `create_*_heatmap()` functions, scaled so
 #' each row of the heatmap keeps roughly the same visual height
-#' regardless of how many predictors the data contains.
+#' regardless of how many predictors the data contains, and floored at
+#' a minimum height that ensures the side legend (when present) is
+#' fully visible.
 #'
 #' @details
 #' Heatmaps reserve a fixed band of vertical space for the title,
@@ -17,6 +19,21 @@
 #' and `full_n`, accounting for `margin` overhead, and caps the
 #' figure at `full_height` once `n >= full_n`. Above the cap, rows
 #' shrink to fit the capped figure.
+#'
+#' At very small `n` the row-scaled figure can still be shorter than
+#' the side-legend stack itself, which produces a clipped legend
+#' (the colorbar headers or end labels disappear off the top or
+#' bottom of the figure). `min_height` enforces a floor below which
+#' the figure does not shrink, so the legend always renders fully.
+#' At small `n` the rows are slightly taller than at `full_n` -- an
+#' acceptable trade for a complete legend.
+#'
+#' When `show_legend = FALSE` the figure has no side-legend constraint
+#' (the heatmap is being rendered without its legend, e.g. for a
+#' publication panel that uses a single shared legend exported via
+#' [create_heatmap_legend()]). In that case the floor drops from the
+#' default 5 inches to 3 inches -- still enough for the title +
+#' rotated x-axis labels + a couple of rows.
 #'
 #' Predictors whose name contains `"Intercept"` are excluded from the
 #' row count by default, matching the chFnirs heatmap pipelines'
@@ -33,6 +50,15 @@
 #'   rotated x-axis labels, plot padding). Default `2`. Tune if rows
 #'   look too cramped (decrease) or too generous (increase) at small
 #'   `n`.
+#' @param show_legend Logical. Whether the heatmap this height feeds
+#'   will be rendered with its side legend. Used to pick the default
+#'   `min_height`. Default `TRUE` (matches the heatmap functions'
+#'   default).
+#' @param min_height Numeric floor on the returned height, in inches.
+#'   When `NULL` (default), resolves to `5` if `show_legend` is `TRUE`
+#'   (enough to fit the typical positive + negative colorbar legend
+#'   stack with the not-tested swatch) or `3` if `show_legend` is
+#'   `FALSE`. Pass an explicit value to override.
 #' @param pred_col Name of the predictor column in `df`. Default
 #'   `"predictor"`, matching the Tier 2 chFnirs output schema.
 #' @param removeIntercept Logical. If `TRUE` (default), predictors
@@ -51,18 +77,30 @@
 #'   output_prefix = "PostHoc"
 #' )
 #'
-#' # Tune the cap point and margin if rows look off
-#' heatmap_height(df, full_n = 8, margin = 1.5)
+#' # Publication panel: heatmap without its legend, smaller floor
+#' fh <- heatmap_height(df.posthoc, show_legend = FALSE)
+#' create_posthoc_heatmap(..., show_legend = FALSE, fig_height = fh)
+#'
+#' # Explicit floor override
+#' heatmap_height(df, min_height = 6)
 #' }
 #'
 #' @export
 heatmap_height <- function(df, full_height = 8.5, full_n = 10,
                            margin = 2,
+                           show_legend = TRUE,
+                           min_height = NULL,
                            pred_col = "predictor",
                            removeIntercept = TRUE) {
   preds <- unique(df[[pred_col]])
   if (removeIntercept) preds <- preds[!grepl("Intercept", preds)]
   n <- length(preds)
   per_row <- (full_height - margin) / full_n
-  if (n >= full_n) full_height else margin + n * per_row
+  raw <- if (n >= full_n) full_height else margin + n * per_row
+
+  if (is.null(min_height)) {
+    min_height <- if (show_legend) 5 else 3
+  }
+
+  max(raw, min_height)
 }

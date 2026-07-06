@@ -312,8 +312,17 @@ run_gated_slopes <- function(omnibus_df,
     }
 
     for (eff in matching_effects) {
+      # Look up the gate row in `omnibus_df`. Use `[[type_col]]` for
+      # the type lookup so callers using a non-default `type_col`
+      # (e.g., the ABC pipeline's wrapper, which sets it to "Type")
+      # match correctly. Hardcode `$area` because `iterate_by_area()`
+      # always stamps the omnibus output with a lowercase `area`
+      # column regardless of the input's `area_col`. Same asymmetry
+      # as the 2026-05-06 fix in run_gated_posthoc; see
+      # cleanandsavehrf_filter_critique / chfnirs_package_backlog
+      # for the architectural cleanup tracking the broader issue.
       row_match <- omnibus_df[omnibus_df$effect == eff &
-                              omnibus_df$type == ty &
+                              omnibus_df[[type_col]] == ty &
                               omnibus_df$area == ar, , drop = FALSE]
       if (nrow(row_match) == 0) next
 

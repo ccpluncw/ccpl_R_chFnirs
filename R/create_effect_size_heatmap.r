@@ -68,6 +68,31 @@
 #'   is non-NULL, each group's PDF is written into
 #'   `<save_dir>/<tolower(group_level)>/` instead of flat in
 #'   `save_dir`. Ignored when `group_col` is `NULL`.
+#' @param show_legend Logical. If `TRUE` (default), the fill-scale
+#'   legend is rendered. If `FALSE`, the legend is suppressed --
+#'   useful for publication panels that share a single legend
+#'   exported via [create_heatmap_legend()].
+#' @param value_limits Numeric length-2 vector giving the colorbar's
+#'   numeric domain. For diverging palettes (effect-size data
+#'   contains negatives), pass e.g. `c(-1, 1)` for Cohen's d -- the
+#'   positive colorbar then spans `c(0, 1)` and the negative spans
+#'   `c(-1, 0)`. For sequential palettes (all non-negative), pass
+#'   e.g. `c(0, 0.2)` for partial η². When `NULL` (default), limits
+#'   are auto-computed from the data range. There is no universal
+#'   default -- pick limits that match the effect-size scale you
+#'   are plotting.
+#' @param legend_breaks Numeric vector of values to label on the
+#'   colorbar (e.g., `c(-0.8, -0.5, -0.2, 0.2, 0.5, 0.8)` for
+#'   Cohen's d, or `c(0.01, 0.06, 0.14)` for partial η²). For
+#'   diverging palettes the function automatically routes
+#'   non-negative values to the positive colorbar and negative
+#'   values to the negative colorbar. When `NULL` (default), ggplot
+#'   chooses break positions automatically.
+#' @param pos_legend_title Title for the positive colorbar
+#'   (diverging case) or for the sole colorbar (sequential case).
+#'   When `NULL` (default), uses `es_col`.
+#' @param neg_legend_title Title for the negative colorbar.
+#'   Diverging case only. When `NULL` (default), uses `es_col`.
 #'
 #' @return Invisibly returns `NULL`. Side effect: writes one PDF per
 #'   group level (or a single PDF if `group_col` is `NULL`) into
@@ -112,8 +137,9 @@
 #' @importFrom dplyr relocate
 #' @importFrom reshape2 melt
 #' @importFrom ggplot2 ggplot aes geom_tile geom_text scale_fill_gradient
-#' @importFrom ggplot2 scale_fill_gradient2 labs theme_minimal theme
+#' @importFrom ggplot2 scale_x_discrete guide_colorbar labs theme_minimal theme waiver
 #' @importFrom ggplot2 element_text element_blank ggsave
+#' @importFrom ggnewscale new_scale_fill
 #' @export
 create_effect_size_heatmap <- function(
     results_df,
@@ -138,7 +164,12 @@ create_effect_size_heatmap <- function(
     fig_width      = 11,
     fig_height     = 8.5,
     landscape      = FALSE,
-    split_by_type  = TRUE
+    split_by_type  = TRUE,
+    show_legend    = TRUE,
+    value_limits   = NULL,
+    legend_breaks  = NULL,
+    pos_legend_title = NULL,
+    neg_legend_title = NULL
 ) {
   if (!area_col %in% colnames(results_df)) {
     stop("area_col '", area_col, "' not found in results_df.")
@@ -246,33 +277,117 @@ create_effect_size_heatmap <- function(
       paste0(val_str, sig_str)
     )
 
+    # -- legend titles default to es_col --
+    pos_title <- if (!is.null(pos_legend_title)) pos_legend_title else es_col
+    neg_title <- if (!is.null(neg_legend_title)) neg_legend_title else es_col
+
+    # -- partition legend_breaks by sign for diverging case --
+    if (!is.null(legend_breaks)) {
+      breaks_pos <- legend_breaks[legend_breaks >= 0]
+      breaks_neg <- legend_breaks[legend_breaks <  0]
+    } else {
+      breaks_pos <- waiver()
+      breaks_neg <- waiver()
+    }
+
     # -- build plot --
     if (has_negative) {
-      p <- ggplot(df_long, aes(x = x_label, y = y_label, fill = value)) +
-        geom_tile(color = "grey50") +
-        scale_fill_gradient2(
-          low = low_color, mid = mid_color, high = high_color,
-          midpoint = 0, na.value = "grey80", name = es_col
-        )
+      # Diverging case: split into positive and negative subsets, render
+      # each through its own scale_fill_gradient joined via ggnewscale,
+      # mirroring create_pvalue_heatmap / create_posthoc_heatmap.
+      df_na  <- df_long[is.na(df_long$value), ]
+      df_pos <- df_long[!is.na(df_long$value) & df_long$value >= 0, ]
+      df_neg <- df_long[!is.na(df_long$value) & df_long$value <  0, ]
+
+      # Resolve colorbar limits. When value_limits is NULL, use the
+      # observed data range (matches the prior scale_fill_gradient2
+      # auto-limits behaviour).
+      if (!is.null(value_limits)) {
+        lim_pos <- c(0, value_limits[2])
+        lim_neg <- c(value_limits[1], 0)
+      } else {
+        max_abs <- max(abs(df_long$value), na.rm = TRUE)
+        lim_pos <- c(0, max_abs)
+        lim_neg <- c(-max_abs, 0)
+      }
+
+      p <- ggplot(mapping = aes(x = x_label, y = y_label))
+
+      if (nrow(df_na) > 0) {
+        p <- p + geom_tile(data = df_na, fill = "grey80", color = "grey50")
+      }
+
+      if (nrow(df_pos) > 0) {
+        p <- p +
+          geom_tile(data = df_pos, aes(fill = value), color = "grey50") +
+          scale_fill_gradient(
+            name   = pos_title,
+            low    = mid_color, high = high_color,
+            limits = lim_pos,
+            breaks = breaks_pos,
+            labels = if (inherits(breaks_pos, "waiver")) waiver() else breaks_pos,
+            na.value = "grey80",
+            guide  = guide_colorbar(order = 1)
+          ) +
+          new_scale_fill()
+      }
+
+      if (nrow(df_neg) > 0) {
+        p <- p +
+          geom_tile(data = df_neg, aes(fill = value), color = "grey50") +
+          scale_fill_gradient(
+            name   = neg_title,
+            low    = low_color, high = mid_color,
+            limits = lim_neg,
+            breaks = breaks_neg,
+            labels = if (inherits(breaks_neg, "waiver")) waiver() else breaks_neg,
+            na.value = "grey80",
+            guide  = guide_colorbar(order = 2)
+          )
+      }
     } else {
+      # Sequential case: single scale, white -> seq_high_color.
+      seq_limits <- if (!is.null(value_limits)) value_limits else
+                      c(0, max(df_long$value, na.rm = TRUE))
+
       p <- ggplot(df_long, aes(x = x_label, y = y_label, fill = value)) +
         geom_tile(color = "grey50") +
         scale_fill_gradient(
-          low = seq_low_color, high = seq_high_color,
-          na.value = "grey80", name = es_col
+          name   = pos_title,
+          low    = seq_low_color, high = seq_high_color,
+          limits = seq_limits,
+          breaks = breaks_pos,
+          labels = if (inherits(breaks_pos, "waiver")) waiver() else breaks_pos,
+          na.value = "grey80"
         )
     }
 
-    # value labels (smaller font when asterisks also present)
+    # Enforce x-axis order. Required because the diverging path uses a
+    # base ggplot with no data attached (line ~314), feeding three
+    # geom_tile layers with subsets (df_na, df_pos, df_neg) that may
+    # have differing levels populated. Without an explicit
+    # scale_x_discrete, ggplot can rebuild the discrete axis level
+    # order from the first non-empty geom's data and append later
+    # levels out-of-sequence — visible as misplaced ROIs (e.g.,
+    # temporal_mid_l between precentral_l and precentral_r) when the
+    # input contains NA cells. Anchoring to `areas` (which is the
+    # caller-supplied area_order, factor-validated at line ~252) makes
+    # the axis order deterministic in both diverging and sequential
+    # paths. Mirrors the scale_x_discrete(limits = ...) safety net
+    # already used in create_pvalue_heatmap and create_posthoc_heatmap.
+    p <- p + ggplot2::scale_x_discrete(limits = areas)
+
+    # Cell labels. Pass df_long explicitly because the diverging path's
+    # base ggplot has no data attached (data is supplied per geom_tile)
+    # and geom_text would otherwise inherit nothing.
     if (show_values) {
       p <- p + geom_text(
-        aes(label = cell_label),
+        data = df_long, aes(label = cell_label),
         size = 3.5, color = "black"
       )
     } else if (use_sig) {
-      # asterisks only — use asterisk_size, centered in cell
       p <- p + geom_text(
-        aes(label = cell_label),
+        data = df_long, aes(label = cell_label),
         size = asterisk_size, color = "black"
       )
     }
@@ -285,7 +400,8 @@ create_effect_size_heatmap <- function(
         axis.text.y      = element_text(size = 12),
         plot.title       = element_text(hjust = 0.5, size = 16, face = "bold"),
         panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank()
+        panel.grid.minor = element_blank(),
+        legend.position  = if (show_legend) "right" else "none"
       )
 
     fname <- if (!is.null(group_col)) {

@@ -22,6 +22,7 @@ createHeatMapsFromLmerAreaAnalysis(
   asterisk_sz = 10,
   fig_width = 11,
   fig_height = 8.5,
+  show_legend = TRUE,
   removeIntercept = TRUE
 )
 }
@@ -79,6 +80,14 @@ when a heatmap has fewer rows than usual so each row keeps its
 typical visual height; a small helper such as
 \code{heatmap_height(df, full_n = 6)} in the calling script is one
 way to compute this.}
+
+\item{show_legend}{Logical. If \code{TRUE} (default), the side legend is
+rendered on every primitive heatmap inside this wrapper. If
+\code{FALSE}, legends are suppressed across all four sub-heatmaps,
+for use in publication panels that share a single legend
+exported via \code{\link[=create_heatmap_legend]{create_heatmap_legend()}}. Pair with
+\code{heatmap_height(..., show_legend = FALSE)} to drop the
+minimum-height floor.}
 
 \item{removeIntercept}{Remove intercept rows? Default: TRUE.}
 }

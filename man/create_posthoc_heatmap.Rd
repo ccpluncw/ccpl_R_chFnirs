@@ -24,7 +24,8 @@ create_posthoc_heatmap(
   fig_width = 8.5,
   fig_height = 11,
   title = "Post-Hoc P-Value Heatmap",
-  landscape = FALSE
+  landscape = FALSE,
+  show_legend = TRUE
 )
 }
 \arguments{
@@ -69,6 +70,11 @@ Default: \code{c(-0.05, -0.01, 0, 0.01, 0.05)}.}
 \item{title}{(Optional) Title of the heatmap. Default: "Post-Hoc P-Value Heatmap".}
 
 \item{landscape}{(Optional) If TRUE, swaps width/height. Default: FALSE.}
+
+\item{show_legend}{(Optional) If \code{TRUE} (default), the side legend
+is rendered. If \code{FALSE}, the legend is suppressed -- useful for
+publication panels that share a single legend exported via
+\code{\link[=create_heatmap_legend]{create_heatmap_legend()}}.}
 }
 \value{
 Saves a plot to a file and prints a confirmation message.

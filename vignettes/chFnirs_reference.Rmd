@@ -45,7 +45,7 @@ The package contains 26 exported functions (plus 1 internal helper) organized in
 | **Omnibus testing** | `run_omnibus_by_area`, `run_omnibus_by_area_bh` | Area-wise Type III ANOVA with optional robust covariance and BH correction |
 | **Activation & slopes** | `run_activation_tests`, `run_slopes_vs_zero` | Ungated marginal-mean and slope-vs-zero tests |
 | **Gated post-hocs** | `run_gated_posthoc`, `run_gated_slopes` | Pairwise contrasts gated on omnibus significance |
-| **Visualization** | `createHeatMapsFromLmerAreaAnalysis`, `CreateSigBetaTable`, `create_pvalue_heatmap`, `create_posthoc_heatmap`, `create_omnibus_heatmap`, `create_forced_color_heatmap`, `create_effect_size_heatmap`, `plot_simple_slopes`, `plot_slope_lines` | Heatmaps and slope plots |
+| **Visualization** | `createHeatMapsFromLmerAreaAnalysis`, `CreateSigBetaTable`, `create_pvalue_heatmap`, `create_posthoc_heatmap`, `create_omnibus_heatmap`, `create_forced_color_heatmap`, `create_effect_size_heatmap`, `create_heatmap_legend`, `plot_simple_slopes`, `plot_slope_lines` | Heatmaps, standalone legends, and slope plots |
 | **Utilities** | `getBHvalues`, `getQvalues`, `compute_cohens_d`, `compute_partial_eta_sq`, `has_tested_results`, `standardize_emmeans_columns`, `write_results_by_type`, `sort_rois_anatomically`, `sort_fnirs_channels_by_name`, `heatmap_height`, `shorten_string`, `run_lmer_analysis_by_area` (deprecated) | Effect sizes, p-value adjustment, column renaming, I/O, sorting, sizing |
 | **Internal** | `iterate_by_area` | Shared iteration engine for Tier 2 analysis functions |
 
@@ -443,6 +443,7 @@ createHeatMapsFromLmerAreaAnalysis(
   asterisk_sz    = 10,
   fig_width      = 11,
   fig_height     = 8.5,
+  show_legend    = TRUE,
   removeIntercept = TRUE
 )
 ```
@@ -466,6 +467,7 @@ createHeatMapsFromLmerAreaAnalysis(
 | `asterisk_sz` | numeric | `10` | Asterisk size in mm. |
 | `fig_width` | numeric | `11` | Figure width in inches, forwarded to all primitive heatmap calls. |
 | `fig_height` | numeric | `8.5` | Figure height in inches, forwarded to all primitive heatmap calls. |
+| `show_legend` | logical | `TRUE` | Forward to all primitive heatmap calls. `FALSE` suppresses the legend on every sub-heatmap, for use with `create_heatmap_legend()` in publication panels. |
 | `removeIntercept` | logical | `TRUE` | Drop intercept rows. |
 
 ### Return value
@@ -544,7 +546,12 @@ create_effect_size_heatmap(
   fig_width          = 11,
   fig_height         = 8.5,
   landscape          = FALSE,
-  split_by_type      = TRUE
+  split_by_type      = TRUE,
+  show_legend        = TRUE,
+  value_limits       = NULL,
+  legend_breaks      = NULL,
+  pos_legend_title   = NULL,
+  neg_legend_title   = NULL
 )
 ```
 
@@ -562,6 +569,18 @@ create_effect_size_heatmap(
 | `area_order` | char vec/NULL | `NULL` | Desired x-axis order. Precompute with `sort_rois_anatomically()` (ROIs) or `sort_fnirs_channels_by_name()` (channels). `NULL` = order of occurrence. |
 | `group_col` | string/NULL | `NULL` | Split column (one heatmap per group). |
 | `split_by_type` | logical | `TRUE` | Route per-group PDFs to subdirectories. |
+| `show_legend` | logical | `TRUE` | If `FALSE`, suppress the fill-scale legend (for publication panels paired with `create_heatmap_legend()`). |
+| `value_limits` | numeric/NULL | `NULL` | Colorbar domain. For Cohen's d-style diverging data, pass `c(-1, 1)` (or wider). For partial η², pass `c(0, 0.2)`. `NULL` = auto from data range. There is no universal default. |
+| `legend_breaks` | numeric/NULL | `NULL` | Tick positions on the colorbar. Diverging palettes auto-route negative values to the negative bar. `NULL` = ggplot default. |
+| `pos_legend_title` | string/NULL | `NULL` | Title for the positive colorbar (diverging) or sole colorbar (sequential). `NULL` = `es_col`. |
+| `neg_legend_title` | string/NULL | `NULL` | Title for the negative colorbar (diverging only). `NULL` = `es_col`. |
+
+### Diverging vs sequential
+
+The function chooses palette automatically based on whether `es_col` contains negative values:
+
+- **Diverging** (any negatives, e.g. Cohen's d): two split colorbars (`mid_color → high_color` for positive, `low_color → mid_color` for negative), joined with `ggnewscale::new_scale_fill()`. Mirrors the structure of `create_pvalue_heatmap` / `create_posthoc_heatmap`.
+- **Sequential** (all non-negative, e.g. partial η²): single colorbar `seq_low_color → seq_high_color`.
 
 ### Label modes
 
@@ -620,7 +639,8 @@ create_pvalue_heatmap(
   fig_width              = 8.5,
   fig_height             = 11,
   title                  = "Adjusted P-Value Heatmap",
-  landscape              = FALSE
+  landscape              = FALSE,
+  show_legend            = TRUE
 )
 ```
 
@@ -655,7 +675,8 @@ create_omnibus_heatmap(
   fig_width              = 8.5,
   fig_height             = 11,
   title                  = "Omnibus P-Value Heatmap",
-  landscape              = FALSE
+  landscape              = FALSE,
+  show_legend            = TRUE
 )
 ```
 
@@ -686,7 +707,8 @@ create_posthoc_heatmap(
   fig_width              = 8.5,
   fig_height             = 11,
   title                  = "Post-Hoc P-Value Heatmap",
-  landscape              = FALSE
+  landscape              = FALSE,
+  show_legend            = TRUE
 )
 ```
 
@@ -707,7 +729,130 @@ create_forced_color_heatmap(
   fig_width     = 8.5,
   fig_height    = 11,
   title         = "Significance Direction Heatmap",
-  landscape     = FALSE
+  landscape     = FALSE,
+  show_legend   = TRUE
+)
+```
+
+\newpage
+
+## `create_heatmap_legend`
+
+Renders just the legend that the chFnirs heatmap functions produce, with no panel or axes, and saves it to its own PDF. Designed for publication panels where multiple heatmaps share a single legend rather than each carrying its own embedded copy. Pair with `show_legend = FALSE` on the heatmap calls themselves and `heatmap_height(..., show_legend = FALSE)` to drop the row-height floor.
+
+### Usage
+
+```{r}
+create_heatmap_legend(
+  show_pos          = TRUE,
+  show_neg          = TRUE,
+  show_not_tested   = FALSE,
+  scale_type        = "linear",
+  log_power         = 0.2,
+  pos_legend_breaks = c(0.001, 0.01, 0.05),
+  neg_legend_breaks = c(-0.05, -0.01, -0.001),
+  pos_value_limits  = c(0, 1),
+  neg_value_limits  = c(-1, 0),
+  pos_legend_title  = "Positive Effect",
+  neg_legend_title  = "Negative Effect",
+  not_tested_label  = "Not tested\n(omnibus n.s.)",
+  pos_color         = "red",
+  neg_color         = "blue",
+  mid_color         = "white",
+  not_tested_color  = "grey80",
+  fig_width         = 3,
+  fig_height        = 5,
+  save_dir          = ".",
+  file_name         = "Heatmap_Legend.pdf"
+)
+```
+
+### Arguments
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `show_pos` | logical | `TRUE` | Include the positive colorbar. |
+| `show_neg` | logical | `TRUE` | Include the negative colorbar. |
+| `show_not_tested` | logical | `FALSE` | Include the not-tested swatch. |
+| `scale_type` | string | `"linear"` | One of `"linear"`, `"log"` (p-value modes; transformation `1 - |p|^log_power` lands in `[0, 1]`), or `"none"` (no transformation; breaks used as colorbar positions directly — for effect-size legends). Must match the heatmap's `scale_type`. |
+| `log_power` | numeric | `0.2` | Must match the heatmap's `log_power` when `scale_type = "log"`. |
+| `pos_legend_breaks` | numeric | `c(0.001, 0.01, 0.05)` | P-values (or effect-size values when `scale_type = "none"`) labeled on the positive bar. |
+| `neg_legend_breaks` | numeric | `c(-0.05, -0.01, -0.001)` | P-values (or negative effect-size values) on the negative bar. |
+| `pos_value_limits` | numeric | `c(0, 1)` | Positive colorbar domain. For p-value modes the default is correct. For `scale_type = "none"`, set to match the heatmap (e.g., `c(0, 1)` for Cohen's d, `c(0, 0.2)` for partial η²). |
+| `neg_value_limits` | numeric | `c(-1, 0)` | Negative colorbar domain. Override for `scale_type = "none"` (e.g., `c(-1, 0)` for Cohen's d). |
+| `pos_legend_title` | string | `"Positive Effect"` | Pass `"p-value"` for the omnibus legend, or e.g. `"Cohen's d (+)"` for an effect-size legend. |
+| `neg_legend_title` | string | `"Negative Effect"` | |
+| `not_tested_label` | string | `"Not tested\n(omnibus n.s.)"` | Newline matches the embedded post-hoc legend. |
+| `pos_color` | string | `"red"` | High-end color for the positive bar. Pass `"darkgreen"` for omnibus, `"darkorange"` for sequential effect-size. |
+| `neg_color` | string | `"blue"` | Low-end color for the negative bar. |
+| `mid_color` | string | `"white"` | Midpoint color of both bars. |
+| `not_tested_color` | string | `"grey80"` | Swatch color. |
+| `fig_width`, `fig_height` | numeric | `3`, `5` | Output PDF dimensions. |
+| `save_dir`, `file_name` | string | `"."`, `"Heatmap_Legend.pdf"` | Output path. |
+
+### Common patterns
+
+```{r}
+# Activation legend (positive + negative, no not-tested)
+create_heatmap_legend(show_pos = TRUE, show_neg = TRUE,
+                      show_not_tested = FALSE)
+
+# Omnibus legend (single green colorbar)
+create_heatmap_legend(
+  show_pos = TRUE, show_neg = FALSE, show_not_tested = FALSE,
+  pos_color = "darkgreen",
+  pos_legend_title = "p-value",
+  pos_legend_breaks = c(0.001, 0.01, 0.05, 0.10, 0.50)
+)
+
+# Post-hoc legend (full stack)
+create_heatmap_legend(show_pos = TRUE, show_neg = TRUE,
+                      show_not_tested = TRUE)
+
+# Effect-size legend, Cohen's d (diverging, no transformation)
+create_heatmap_legend(
+  show_pos = TRUE, show_neg = TRUE, show_not_tested = FALSE,
+  scale_type = "none",
+  pos_value_limits = c(0, 1),
+  neg_value_limits = c(-1, 0),
+  pos_legend_breaks = c(0.2, 0.5, 0.8),
+  neg_legend_breaks = c(-0.8, -0.5, -0.2),
+  pos_legend_title = "Cohen's d (+)",
+  neg_legend_title = "Cohen's d (-)"
+)
+
+# Effect-size legend, partial eta-squared (sequential)
+create_heatmap_legend(
+  show_pos = TRUE, show_neg = FALSE, show_not_tested = FALSE,
+  scale_type = "none",
+  pos_value_limits = c(0, 0.2),
+  pos_legend_breaks = c(0.01, 0.06, 0.14),
+  pos_legend_title = "partial eta-sq",
+  pos_color = "darkorange"
+)
+```
+
+### Publication workflow
+
+```{r}
+fig_dir <- "paper/figures"
+
+# Render N heatmaps without legends
+for (chrom in c("hbo", "cbsi")) {
+  df_sub <- subset(df.posthoc, type == chrom)
+  create_posthoc_heatmap(
+    df_sub, ..., show_legend = FALSE,
+    fig_height = heatmap_height(df_sub, show_legend = FALSE),
+    save_dir = fig_dir,
+    file_name = sprintf("Panel_%s.pdf", chrom)
+  )
+}
+
+# Export one shared legend
+create_heatmap_legend(
+  show_pos = TRUE, show_neg = TRUE, show_not_tested = TRUE,
+  save_dir = fig_dir,
+  file_name = "Shared_Legend_PostHoc.pdf"
 )
 ```
 
@@ -999,6 +1144,8 @@ heatmap_height(
   full_height     = 8.5,
   full_n          = 10,
   margin          = 2,
+  show_legend     = TRUE,
+  min_height      = NULL,
   pred_col        = "predictor",
   removeIntercept = TRUE
 )
@@ -1012,6 +1159,8 @@ heatmap_height(
 | `full_height` | numeric | `8.5` | Figure height in inches at and above the cap. |
 | `full_n` | numeric | `10` | Row count at which the figure reaches `full_height`. Increase for smaller rows. |
 | `margin` | numeric | `2` | Inches reserved for non-chart elements. |
+| `show_legend` | logical | `TRUE` | Whether the heatmap will render with its side legend. Used to pick the default `min_height`. |
+| `min_height` | numeric/NULL | `NULL` | Floor on the returned height. `NULL` resolves to `5` if `show_legend` is `TRUE` (fits the typical legend stack) or `3` if `FALSE`. Override with an explicit value. |
 | `pred_col` | string | `"predictor"` | Name of predictor column in `df`. |
 | `removeIntercept` | logical | `TRUE` | Drop predictors whose name contains `"Intercept"`. |
 

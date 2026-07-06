@@ -92,6 +92,21 @@
 #'   `omnibus_df$effect` to identify the interaction effect(s) of
 #'   interest. Default matches any effect name containing `var1` and
 #'   `var2` as whole words in either order.
+#' @param facet_by Character vector of factor names to facet the
+#'   resulting plot by, or `NULL` (default) for auto-detection. When
+#'   the matched effect is a pure 2-way `var1:var2`, no faceting is
+#'   needed and the function behaves identically to the unfaceted
+#'   form. When the matched effect is higher-order (e.g.,
+#'   `cond:var1:var2`, `Group:var1:var2`, or the 4-way
+#'   `Group:cond:var1:var2`), the var1xvar2 surface differs across
+#'   levels of the extra factor(s), and a single unfaceted slice is
+#'   misleading. Auto-detection tokenizes the matched effect string
+#'   on `":"`, removes `var1`/`var2`, and keeps tokens that are
+#'   columns in `data` — so a `cond:var1:var2` effect auto-facets by
+#'   `cond`. One facet variable -> `facet_wrap`; two -> `facet_grid`
+#'   on the first two; more -> `facet_wrap` on the interaction (with
+#'   an info message). Pass an explicit character vector to override
+#'   the auto-detection.
 #' @param p_col Character scalar naming the gate column in
 #'   `omnibus_df`. Default `"p_bh"`. Ignored when `gate = FALSE`.
 #' @param p_threshold Numeric scalar. Cells with `p_col < p_threshold`
@@ -149,6 +164,18 @@
 #'   (Mean +/- 1SD), not actual subjects, so overlaying raw points
 #'   suggests a 1:1 correspondence that does not exist. Set to `TRUE`
 #'   for exploratory inspection.
+#' @param points_aggregate One of `"auto"` (default) or `"never"`.
+#'   Controls whether overlaid raw-data points are aggregated to
+#'   subject-level. With long-format input (one row per
+#'   Subject x within-subject factor) and between-subject moderators
+#'   (e.g., a hormone z-score), plotting rows as-is over-plots each
+#'   subject once per within-subject level — every subject contributes
+#'   multiple dots stacked at their single x-value. `"auto"` groups
+#'   by `id_col` and plots one mean dot per subject so the dot count
+#'   matches N. Only takes effect when `show_points = TRUE`.
+#' @param id_col Character scalar naming the subject-ID column in
+#'   `data`. Required when `points_aggregate = "auto"` and
+#'   `show_points = TRUE`. Default `"ID"`.
 #' @param point_alpha Numeric in (0, 1]. Alpha transparency for raw
 #'   points when `show_points = TRUE`. Default `0.35`.
 #'
@@ -211,11 +238,11 @@
 #' )
 #' }
 #'
-#' @importFrom stats as.formula sd
+#' @importFrom stats as.formula sd aggregate
 #' @importFrom emmeans emmeans emtrends
 #' @importFrom ggplot2 ggplot aes geom_line scale_color_manual
 #' @importFrom ggplot2 scale_linetype_manual labs theme_minimal theme
-#' @importFrom ggplot2 element_text
+#' @importFrom ggplot2 element_text facet_wrap facet_grid
 #' @importFrom grDevices pdf dev.off
 #' @export
 plot_simple_slopes <- function(
@@ -229,6 +256,7 @@ plot_simple_slopes <- function(
     model,
     vcov             = NULL,
     effect_pattern   = paste0("\\b", var1, "\\b.*\\b", var2, "\\b"),
+    facet_by         = NULL,
     p_col            = "p_bh",
     p_threshold      = 0.05,
     gate             = TRUE,
@@ -244,8 +272,12 @@ plot_simple_slopes <- function(
     output_dir       = ".",
     split_by_type    = TRUE,
     show_points      = FALSE,
+    points_aggregate = c("auto", "never"),
+    id_col           = "ID",
     point_alpha      = 0.35
 ) {
+
+  points_aggregate <- match.arg(points_aggregate)
 
   # --- Validate model (required) ---
   if (missing(model)) {
@@ -307,6 +339,23 @@ plot_simple_slopes <- function(
   if (!is.numeric(mod_sd_levels) || length(mod_sd_levels) == 0) {
     stop("`mod_sd_levels` must be a non-empty numeric vector.", call. = FALSE)
   }
+  if (show_points && points_aggregate == "auto" &&
+      !(id_col %in% colnames(data))) {
+    stop("`points_aggregate = \"auto\"` requires `id_col = \"", id_col,
+         "\"` to exist in `data`. Pass `id_col` explicitly or set ",
+         "`points_aggregate = \"never\"`.", call. = FALSE)
+  }
+  if (!is.null(facet_by)) {
+    if (!is.character(facet_by) || length(facet_by) == 0) {
+      stop("`facet_by` must be a non-empty character vector or NULL.",
+           call. = FALSE)
+    }
+    missing_facets <- setdiff(facet_by, colnames(data))
+    if (length(missing_facets) > 0) {
+      stop("`facet_by` names not found in `data`: ",
+           paste(missing_facets, collapse = ", "), call. = FALSE)
+    }
+  }
 
   # --- Find matching effects ---
   matching_effects <- unique(
@@ -349,9 +398,13 @@ plot_simple_slopes <- function(
   }
 
   # --- Inner helper: build one simple-slopes page ---
-  # focal_var on the x-axis, moderator_var split at mod_sd_levels SD
+  # focal_var on the x-axis, moderator_var split at mod_sd_levels SD.
+  # facet_vars (character vector) names categorical factors to facet
+  # on when the matched effect is higher-order (e.g., cond:v1:v2 or
+  # the 4-way Group:cond:v1:v2). Empty -> unfaceted (original 2-way
+  # behavior preserved byte-for-byte).
   build_slope_page <- function(fit, df_sub, focal_var, moderator_var,
-                               ty, ar, eff, pval, vc) {
+                               ty, ar, eff, pval, vc, facet_vars) {
 
     mod_mean  <- mean(df_sub[[moderator_var]], na.rm = TRUE)
     mod_sd_v  <- stats::sd(df_sub[[moderator_var]], na.rm = TRUE)
@@ -375,6 +428,18 @@ plot_simple_slopes <- function(
     focal_m <- mean(df_sub[[focal_var]], na.rm = TRUE)
     trend_col <- paste0(focal_var, ".trend")
 
+    # Reference grid: ~ 1 collapses every other factor in the model
+    # (correct ONLY for a pure 2-way var1:var2 effect). For
+    # higher-order effects we condition on the residual factor(s) so
+    # the rendered slopes match what the F-test said is varying.
+    if (length(facet_vars) > 0) {
+      em_form <- stats::as.formula(
+        paste0("~ ", paste(facet_vars, collapse = " + "))
+      )
+    } else {
+      em_form <- ~ 1
+    }
+
     preds_list <- lapply(seq_along(mod_values), function(j) {
       mv    <- mod_values[j]
       label <- lev_labels[j]
@@ -384,23 +449,42 @@ plot_simple_slopes <- function(
                            c(focal_var, moderator_var))
 
       if (!is.null(vc)) {
-        emt <- emmeans::emtrends(fit, ~ 1, var = focal_var,
+        emt <- emmeans::emtrends(fit, em_form, var = focal_var,
                                  at = at_slope, vcov. = vc)
-        em  <- emmeans::emmeans(fit, ~ 1, at = at_int, vcov. = vc)
+        em  <- emmeans::emmeans(fit, em_form, at = at_int, vcov. = vc)
       } else {
-        emt <- emmeans::emtrends(fit, ~ 1, var = focal_var, at = at_slope)
-        em  <- emmeans::emmeans(fit, ~ 1, at = at_int)
+        emt <- emmeans::emtrends(fit, em_form, var = focal_var, at = at_slope)
+        em  <- emmeans::emmeans(fit, em_form, at = at_int)
       }
 
-      slope     <- as.data.frame(summary(emt))[[trend_col]]
-      intercept <- as.data.frame(summary(em))$emmean
+      emt_df <- as.data.frame(summary(emt))
+      em_df  <- as.data.frame(summary(em))
 
-      data.frame(
-        focal    = focal_range,
-        y_pred   = intercept + slope * (focal_range - focal_m),
-        ModLevel = factor(label, levels = lev_labels),
-        stringsAsFactors = FALSE
-      )
+      if (length(facet_vars) == 0) {
+        # Unfaceted 2-way path — preserve original behavior.
+        slope     <- emt_df[[trend_col]]
+        intercept <- em_df$emmean
+        data.frame(
+          focal    = focal_range,
+          y_pred   = intercept + slope * (focal_range - focal_m),
+          ModLevel = factor(label, levels = lev_labels),
+          stringsAsFactors = FALSE
+        )
+      } else {
+        # One slope/intercept per facet-level combination.
+        do.call(rbind, lapply(seq_len(nrow(emt_df)), function(k) {
+          slope     <- emt_df[k, trend_col]
+          intercept <- em_df[k, "emmean"]
+          out <- data.frame(
+            focal    = focal_range,
+            y_pred   = intercept + slope * (focal_range - focal_m),
+            ModLevel = factor(label, levels = lev_labels),
+            stringsAsFactors = FALSE
+          )
+          for (fv in facet_vars) out[[fv]] <- emt_df[k, fv]
+          out
+        }))
+      }
     })
     preds <- do.call(rbind, preds_list)
 
@@ -428,10 +512,36 @@ plot_simple_slopes <- function(
         NULL
       }
       if (!is.null(y_col) && y_col %in% colnames(df_sub)) {
-        raw <- data.frame(
-          focal  = df_sub[[focal_var]],
-          y_pred = df_sub[[y_col]]
-        )
+        # df_sub is long-format (one row per Subject x within-subject
+        # factor). With between-subject moderators (e.g., a hormone
+        # z-score), plotting rows as-is stacks multiple dots at each
+        # subject's single x. When points_aggregate = "auto":
+        #   - unfaceted: aggregate by ID -> one mean dot per subject.
+        #   - faceted:   aggregate by ID x facet_vars -> one dot per
+        #     subject per facet panel (preserves the within-subject
+        #     factor that defines the panel).
+        if (points_aggregate == "auto") {
+          by_list <- c(list(.id = df_sub[[id_col]]),
+                       setNames(lapply(facet_vars,
+                                       function(fv) df_sub[[fv]]),
+                                facet_vars))
+          agg_df <- stats::aggregate(
+            df_sub[, c(focal_var, y_col), drop = FALSE],
+            by  = by_list,
+            FUN = mean, na.rm = TRUE
+          )
+          raw <- data.frame(
+            focal  = agg_df[[focal_var]],
+            y_pred = agg_df[[y_col]]
+          )
+          for (fv in facet_vars) raw[[fv]] <- agg_df[[fv]]
+        } else {
+          raw <- data.frame(
+            focal  = df_sub[[focal_var]],
+            y_pred = df_sub[[y_col]]
+          )
+          for (fv in facet_vars) raw[[fv]] <- df_sub[[fv]]
+        }
         p <- p + ggplot2::geom_point(
           data = raw, inherit.aes = FALSE,
           ggplot2::aes(x = focal, y = y_pred),
@@ -440,7 +550,7 @@ plot_simple_slopes <- function(
       }
     }
 
-    p +
+    final_plot <- p +
       scale_color_manual(values = colors_used) +
       scale_linetype_manual(values = ltypes_used) +
       labs(
@@ -450,7 +560,28 @@ plot_simple_slopes <- function(
         y        = y_label,
         color    = "Moderator",
         linetype = "Moderator"
-      ) +
+      )
+
+    # Faceting layer. One facet -> facet_wrap. Two -> facet_grid.
+    # More -> facet_wrap on the combined interaction (with a notice).
+    if (length(facet_vars) == 1) {
+      final_plot <- final_plot + ggplot2::facet_wrap(
+        stats::as.formula(paste0("~ ", facet_vars[1]))
+      )
+    } else if (length(facet_vars) == 2) {
+      final_plot <- final_plot + ggplot2::facet_grid(
+        stats::as.formula(paste0(facet_vars[1], " ~ ", facet_vars[2]))
+      )
+    } else if (length(facet_vars) > 2) {
+      message("  [INFO] plot_simple_slopes: ", length(facet_vars),
+              " facet variables; using facet_wrap on the combined ",
+              "interaction. Consider passing `facet_by` explicitly.")
+      final_plot <- final_plot + ggplot2::facet_wrap(
+        stats::as.formula(paste0("~ ", paste(facet_vars, collapse = " + ")))
+      )
+    }
+
+    final_plot +
       theme_minimal(base_size = theme_base_size) +
       theme(
         plot.title      = element_text(face = "bold"),
@@ -458,13 +589,25 @@ plot_simple_slopes <- function(
       )
   }
 
+  # --- Derive facet vars for a given effect string ---
+  # User-supplied `facet_by` takes precedence (already validated above);
+  # auto-detection tokenizes the effect on ":", drops var1/var2, and
+  # keeps tokens that are columns in `data`. Per-row because different
+  # surviving effects can have different residual factors.
+  derive_facet_vars <- function(eff) {
+    if (!is.null(facet_by)) return(facet_by)
+    tokens <- strsplit(as.character(eff), ":", fixed = TRUE)[[1]]
+    candidates <- setdiff(tokens, c(var1, var2))
+    candidates[candidates %in% colnames(data)]
+  }
+
   # --- Main loop: build pages per type ---
-  types_in_sig <- unique(sig_rows$type)
+  types_in_sig <- unique(as.character(sig_rows[[type_col]]))
   result <- setNames(vector("list", length(types_in_sig)), types_in_sig)
   for (ty in names(result)) result[[ty]] <- list()
 
   for (ty in types_in_sig) {
-    sig_rows_ty <- sig_rows[sig_rows$type == ty, , drop = FALSE]
+    sig_rows_ty <- sig_rows[sig_rows[[type_col]] == ty, , drop = FALSE]
     type_pages <- list()
 
     for (i in seq_len(nrow(sig_rows_ty))) {
@@ -488,14 +631,18 @@ plot_simple_slopes <- function(
           NULL
         }
 
+        facet_vars <- derive_facet_vars(eff)
+
         page_A <- build_slope_page(fit, df_cell,
                                    focal_var = var1, moderator_var = var2,
                                    ty = ty, ar = ar, eff = eff,
-                                   pval = pval, vc = vc)
+                                   pval = pval, vc = vc,
+                                   facet_vars = facet_vars)
         page_B <- build_slope_page(fit, df_cell,
                                    focal_var = var2, moderator_var = var1,
                                    ty = ty, ar = ar, eff = eff,
-                                   pval = pval, vc = vc)
+                                   pval = pval, vc = vc,
+                                   facet_vars = facet_vars)
 
         cell_key <- paste(ar, eff, sep = "|")
         type_pages[[cell_key]] <- list(page_A = page_A, page_B = page_B)

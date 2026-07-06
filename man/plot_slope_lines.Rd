@@ -20,6 +20,8 @@ plot_slope_lines(
   suffix = "SlopeDiff",
   show_ci = TRUE,
   show_points = TRUE,
+  points_aggregate = c("auto", "never"),
+  id_col = "ID",
   point_alpha = 0.4,
   n_grid = 40,
   y_label = NULL,
@@ -84,6 +86,24 @@ Default \code{TRUE}.}
 
 \item{show_points}{Logical; overlay raw-data points matching each
 line's group. Default \code{TRUE}.}
+
+\item{points_aggregate}{One of \code{"auto"} (default) or \code{"never"}.
+Controls whether raw-row points are aggregated to subject-level
+before plotting. With long-format input (one row per
+Subject x within-subject factor), plotting rows as-is over-plots
+each subject once per within-subject level whenever the spec
+does not condition on every within-subject factor (e.g., an
+"Overall" main-effect line, or a Group-only filter when the
+model also has a Condition factor). \code{"auto"} groups each spec's
+filtered rows by \code{id_col} and plots one mean dot per subject,
+so the dots are at the same level of analysis as the line.
+This is a no-op when the spec already conditions on every
+within-subject factor (one row per subject after filter). Set
+\code{"never"} to preserve the legacy long-format dot cloud.}
+
+\item{id_col}{Character scalar naming the subject-ID column in
+\code{data}. Required when \code{points_aggregate = "auto"} and
+\code{show_points = TRUE}. Default \code{"ID"}.}
 
 \item{point_alpha}{Numeric in (0, 1]. Point transparency. Default
 \code{0.4}.}

@@ -49,6 +49,13 @@
 #'   typical visual height; a small helper such as
 #'   `heatmap_height(df, full_n = 6)` in the calling script is one
 #'   way to compute this.
+#' @param show_legend Logical. If `TRUE` (default), the side legend is
+#'   rendered on every primitive heatmap inside this wrapper. If
+#'   `FALSE`, legends are suppressed across all four sub-heatmaps,
+#'   for use in publication panels that share a single legend
+#'   exported via [create_heatmap_legend()]. Pair with
+#'   `heatmap_height(..., show_legend = FALSE)` to drop the
+#'   minimum-height floor.
 #' @param removeIntercept Remove intercept rows? Default: TRUE.
 #'
 #' @return Nothing. Writes CSVs and PDFs under `output_dir`.
@@ -70,6 +77,7 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
                                                 asterisk_sz = 10,
                                                 fig_width = 11,
                                                 fig_height = 8.5,
+                                                show_legend = TRUE,
                                                 removeIntercept = TRUE) {
 
   # Apply caller-supplied area ordering, if any
@@ -152,13 +160,15 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
         out_list_discrete[[ty]], 3:ncol(out_list_discrete[[ty]]), 2,
         color_mapping = c("0" = "white", "1" = "darkgreen"),
         file_name = fname,
-        fig_width = fig_width, fig_height = fig_height
+        fig_width = fig_width, fig_height = fig_height,
+        show_legend = show_legend
       )
     } else {
       create_forced_color_heatmap(
         out_list_discrete[[ty]], 3:ncol(out_list_discrete[[ty]]), 2,
         file_name = fname,
-        fig_width = fig_width, fig_height = fig_height
+        fig_width = fig_width, fig_height = fig_height,
+        show_legend = show_legend
       )
     }
   }
@@ -184,7 +194,8 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
         log_power = log_power,
         file_name = fname,
         fig_width = fig_width, fig_height = fig_height,
-        asterisk_size = asterisk_sz
+        asterisk_size = asterisk_sz,
+        show_legend = show_legend
       )
     } else if (heatmap_type == "posthoc") {
       # Red/blue with grey for untested ROIs
@@ -194,7 +205,8 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
         log_power = log_power,
         file_name = fname,
         fig_width = fig_width, fig_height = fig_height,
-        asterisk_size = asterisk_sz
+        asterisk_size = asterisk_sz,
+        show_legend = show_legend
       )
     } else {
       # "activation" - standard red/blue, no grey (all cells are tested)
@@ -204,7 +216,8 @@ createHeatMapsFromLmerAreaAnalysis <- function(results_df, area_col, group_col,
         log_power = log_power,
         file_name = fname,
         fig_width = fig_width, fig_height = fig_height,
-        asterisk_size = asterisk_sz
+        asterisk_size = asterisk_sz,
+        show_legend = show_legend
       )
     }
   }

@@ -20,19 +20,23 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports:
     car,
+    cowplot,
     dplyr,
     emmeans,
     ggnewscale,
     ggplot2,
     lifecycle,
+    lme4,
     lmerTest,
     magrittr,
     qvalue,
     reshape2,
     rlang,
     sandwich,
-    stringr
+    stringr,
+    writexl
 Suggests:
+    blme,
     knitr,
     rmarkdown
 VignetteBuilder: knitr

@@ -22,14 +22,18 @@
 #' @param title (Optional) The title of the heatmap. Default: "Effect Table".
 #' @param landscape (Optional) A logical value. If TRUE, swaps figure width and
 #'   height for landscape orientation. Default: FALSE.
+#' @param show_legend (Optional) If `TRUE` (default), the side legend
+#'   is rendered. If `FALSE`, the legend is suppressed -- useful for
+#'   publication panels that share a single legend exported via
+#'   [create_heatmap_legend()].
 #'
 #' @return Nothing. The function is called for its side effect of saving a plot to a file.
 #'
 #' @importFrom magrittr %>%
 #' @importFrom dplyr select all_of
 #' @importFrom reshape2 melt
-#' @importFrom ggplot2 ggplot aes geom_tile scale_fill_manual labs theme_minimal
-#' @importFrom ggplot2 theme element_text element_blank ggsave
+#' @importFrom ggplot2 ggplot aes geom_tile scale_fill_manual scale_x_discrete
+#' @importFrom ggplot2 labs theme_minimal theme element_text element_blank ggsave
 #'
 #' @examples
 #' # 1. Create sample data
@@ -72,7 +76,8 @@ create_forced_color_heatmap <- function(
     fig_width = 8.5,
     fig_height = 11,
     title = "Effect Table",
-    landscape = FALSE
+    landscape = FALSE,
+    show_legend = TRUE
 ) {
     heatmap_data <- table_data %>%
         select(all_of(data_col_indices))
@@ -85,14 +90,22 @@ create_forced_color_heatmap <- function(
 
     df_long$value <- factor(df_long$value, levels = names(color_mapping))
 
+    original_x_order <- colnames(table_data)[data_col_indices]
+
     p <- ggplot(df_long, aes(x = x_label, y = y_label, fill = value)) +
         geom_tile(color = "black") +
         scale_fill_manual(values = color_mapping, drop = FALSE) +
+        scale_x_discrete(limits = original_x_order) +
         labs(title = title, x = "", y = "") +
         theme_minimal() +
         theme(
-            axis.text.x = element_text(angle = 45, hjust = 1),
-            legend.title = element_blank()
+            axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, size = 12),
+            axis.text.y = element_text(size = 12),
+            plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(),
+            legend.title = element_blank(),
+            legend.position = if (show_legend) "right" else "none"
         )
 
     if (landscape) {

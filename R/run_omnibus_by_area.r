@@ -41,6 +41,19 @@
 #'   includes a `partial_eta_sq` column. When `model = "lmer"` the
 #'   column is populated with `NA_real_` because mixed-model ANOVA
 #'   tables do not expose sums of squares.
+#' @param refit_singular Logical. Only consulted when `model = "lmer"`.
+#'   When `TRUE` (the default), any per-cell lmer fit that comes back
+#'   singular (random-effect variance collapsed to the zero boundary,
+#'   per `lme4::isSingular()`) is refit with a weak variance prior via
+#'   `blme::blmer()` and coerced back through `lmerTest` so the ANOVA
+#'   still reports Satterthwaite denominator df. This lifts the
+#'   variance off the boundary and restores subject-level df for the
+#'   between-subjects effects, which a singular fit otherwise inflates
+#'   to the OLS residual (observation-level) df. Set to `FALSE` to keep
+#'   the raw singular fit unchanged (the pre-remedy behaviour). The
+#'   `singular` output column records, per cell, whether the original
+#'   lmer fit was singular regardless of this setting. Requires the
+#'   `blme` package (Suggests) when a refit is actually triggered.
 #'
 #' @return A data.frame with one row per effect x type x area, columns
 #'   in order:
@@ -57,6 +70,9 @@
 #'       use `run_omnibus_by_area_bh()` to add a `p_bh` column.
 #'     \item `partial_eta_sq` — partial eta-squared from classical
 #'       sums of squares. `NA_real_` when `model = "lmer"`.
+#'     \item `singular` — logical; `TRUE` when the original lmer fit for
+#'       that cell was singular (and was therefore refit via blme when
+#'       `refit_singular = TRUE`). `NA` when `model = "lm"`.
 #'   }
 #'   Returns `NULL` if no cell produced output.
 #'
@@ -131,6 +147,8 @@
 #' }
 #'
 #' @importFrom stats as.formula anova lm sigma
+#' @importFrom lme4 isSingular
+#' @importFrom lmerTest as_lmerModLmerTest
 #' @export
 run_omnibus_by_area <- function(data,
                                 formula,
@@ -139,7 +157,8 @@ run_omnibus_by_area <- function(data,
                                 model,
                                 vcov        = NULL,
                                 min_rows    = 5,
-                                effect_size = TRUE) {
+                                effect_size = TRUE,
+                                refit_singular = TRUE) {
 
   # --- Validate model (required) ---
   if (missing(model)) {
@@ -176,16 +195,39 @@ run_omnibus_by_area <- function(data,
   }
 
   # --- Build fit closure ---
+  # Returns list(fit, singular) so the extractor can both run the ANOVA
+  # and stamp whether the *original* lmer fit was singular. When an lmer
+  # fit is singular and refit_singular = TRUE, the same model is refit
+  # with blme's weak default variance prior and coerced back through
+  # lmerTest, which lifts the random-effect variance off the zero
+  # boundary and restores subject-level Satterthwaite df for the
+  # between-subjects effects (Chung et al. 2013).
   fit_fn <- function(df_cell) {
     if (model == "lmer") {
-      lmerTest::lmer(formula, data = df_cell)
+      fit  <- lmerTest::lmer(formula, data = df_cell)
+      sing <- lme4::isSingular(fit)
+      if (sing && refit_singular) {
+        if (!requireNamespace("blme", quietly = TRUE)) {
+          stop("`refit_singular = TRUE` needs the 'blme' package for the\n",
+               "singular-fit remedy. Install it with install.packages(\"blme\"),\n",
+               "or set `refit_singular = FALSE` to keep the singular lmer fit.",
+               call. = FALSE)
+        }
+        fit <- lmerTest::as_lmerModLmerTest(
+          blme::blmer(formula, data = df_cell)
+        )
+      }
+      list(fit = fit, singular = sing)
     } else {
-      stats::lm(formula, data = df_cell)
+      list(fit = stats::lm(formula, data = df_cell), singular = NA)
     }
   }
 
   # --- Build extract closure ---
   extract_fn <- function(fit, df_cell) {
+    # fit_fn hands us list(fit, singular); unpack before use.
+    singular_flag <- fit$singular
+    fit           <- fit$fit
     if (model == "lmer") {
       aov_tab <- as.data.frame(stats::anova(fit))
       partial_eta <- rep(NA_real_, nrow(aov_tab))
@@ -248,6 +290,7 @@ run_omnibus_by_area <- function(data,
       df_den         = as.numeric(df_den),
       p_value        = if (is.na(p_col)) NA_real_ else aov_tab[[p_col]],
       partial_eta_sq = as.numeric(partial_eta),
+      singular       = singular_flag,
       stringsAsFactors = FALSE
     )
   }

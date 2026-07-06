@@ -92,6 +92,22 @@
 #'   Default `TRUE`.
 #' @param show_points Logical; overlay raw-data points matching each
 #'   line's group. Default `TRUE`.
+#' @param points_aggregate One of `"auto"` (default) or `"never"`.
+#'   Controls whether raw-row points are aggregated to subject-level
+#'   before plotting. With long-format input (one row per
+#'   Subject x within-subject factor), plotting rows as-is over-plots
+#'   each subject once per within-subject level whenever the spec
+#'   does not condition on every within-subject factor (e.g., an
+#'   "Overall" main-effect line, or a Group-only filter when the
+#'   model also has a Condition factor). `"auto"` groups each spec's
+#'   filtered rows by `id_col` and plots one mean dot per subject,
+#'   so the dots are at the same level of analysis as the line.
+#'   This is a no-op when the spec already conditions on every
+#'   within-subject factor (one row per subject after filter). Set
+#'   `"never"` to preserve the legacy long-format dot cloud.
+#' @param id_col Character scalar naming the subject-ID column in
+#'   `data`. Required when `points_aggregate = "auto"` and
+#'   `show_points = TRUE`. Default `"ID"`.
 #' @param point_alpha Numeric in (0, 1]. Point transparency. Default
 #'   `0.4`.
 #' @param n_grid Integer. Number of x-axis grid points for line +
@@ -151,7 +167,7 @@
 #' )
 #' }
 #'
-#' @importFrom stats as.formula sd setNames
+#' @importFrom stats as.formula sd setNames aggregate
 #' @importFrom emmeans emmeans
 #' @importFrom ggplot2 ggplot aes geom_line geom_ribbon geom_point
 #' @importFrom ggplot2 scale_color_manual scale_fill_manual
@@ -174,6 +190,8 @@ plot_slope_lines <- function(
     suffix              = "SlopeDiff",
     show_ci             = TRUE,
     show_points         = TRUE,
+    points_aggregate    = c("auto", "never"),
+    id_col              = "ID",
     point_alpha         = 0.4,
     n_grid              = 40,
     y_label             = NULL,
@@ -192,6 +210,13 @@ plot_slope_lines <- function(
          call. = FALSE)
   }
   model <- match.arg(model, c("lmer", "lm"))
+  points_aggregate <- match.arg(points_aggregate)
+  if (show_points && points_aggregate == "auto" &&
+      !(id_col %in% colnames(data))) {
+    stop("`points_aggregate = \"auto\"` requires `id_col = \"", id_col,
+         "\"` to exist in `data`. Pass `id_col` explicitly or set ",
+         "`points_aggregate = \"never\"`.", call. = FALSE)
+  }
   valid_vcov <- c("classical", "HC0", "HC1", "HC2", "HC3", "HC4", "HC5")
   if (is.null(vcov)) {
     vcov <- if (model == "lmer") "classical" else "HC3"
@@ -303,7 +328,7 @@ plot_slope_lines <- function(
 
   # --- Build one page (ggplot) for one sig row ---
   build_page <- function(fit, df_cell, row, vc) {
-    ty <- as.character(row$type)
+    ty <- as.character(row[[type_col]])
     ar <- as.character(row$area)
 
     # Decide the specs: a list of (label, at_list, data_filter_idx)
@@ -404,14 +429,33 @@ plot_slope_lines <- function(
     preds$label <- factor(preds$label, levels = vapply(specs, `[[`,
                                                        character(1), "label"))
 
-    # Points (filtered per spec)
+    # Points (filtered per spec). With long-format input (one row per
+    # Subject x within-subject level), plotting rows as-is over-plots
+    # each subject once per within-subject level whenever the spec
+    # does not condition on every within-subject factor (Overall,
+    # by_factor = "Group", twoway Group posthoc). When
+    # points_aggregate = "auto", group by id_col within each spec and
+    # plot one mean dot per subject — a no-op when the filter already
+    # leaves one row per subject (twoway Cond, threeway).
     pts_rows <- list()
     if (show_points) {
       y_var <- as.character(formula)[2]
       if (y_var %in% colnames(df_cell)) {
+        do_agg <- points_aggregate == "auto"
         for (s in specs) {
           sub <- df_cell[s$filter, , drop = FALSE]
-          if (nrow(sub) > 0) {
+          if (nrow(sub) == 0) next
+          if (do_agg) {
+            agg_df <- stats::aggregate(
+              sub[, c(trend_var, y_var), drop = FALSE],
+              by  = list(.id = sub[[id_col]]),
+              FUN = mean, na.rm = TRUE
+            )
+            pts_rows[[length(pts_rows) + 1]] <- data.frame(
+              x = agg_df[[trend_var]], y = agg_df[[y_var]],
+              label = s$label, stringsAsFactors = FALSE
+            )
+          } else {
             pts_rows[[length(pts_rows) + 1]] <- data.frame(
               x = sub[[trend_var]], y = sub[[y_var]],
               label = s$label, stringsAsFactors = FALSE
@@ -482,13 +526,17 @@ plot_slope_lines <- function(
   }
 
   # --- Iterate rows, grouped by type ---
-  types_in_sig <- unique(as.character(sig$type))
+  # Use [[type_col]] for type-column lookups so callers with a
+  # non-default type_col (e.g., the ABC pipeline's "Type" capital)
+  # match. Hardcode `$area` because iterate_by_area always stamps
+  # lowercase `area` on outputs regardless of input area_col.
+  types_in_sig <- unique(as.character(sig[[type_col]]))
   result <- stats::setNames(vector("list", length(types_in_sig)),
                             types_in_sig)
   for (ty in types_in_sig) result[[ty]] <- list()
 
   for (ty in types_in_sig) {
-    sig_ty <- sig[sig$type == ty, , drop = FALSE]
+    sig_ty <- sig[sig[[type_col]] == ty, , drop = FALSE]
     for (i in seq_len(nrow(sig_ty))) {
       row <- sig_ty[i, , drop = FALSE]
       ar  <- as.character(row$area)

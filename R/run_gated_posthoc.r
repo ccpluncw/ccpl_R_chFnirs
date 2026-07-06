@@ -183,7 +183,21 @@ run_gated_posthoc <- function(omnibus_df,
     ty <- df_cell[[type_col]][1]
     ar <- df_cell[[area_col]][1]
 
-    row_match <- effect_rows[effect_rows$type == ty & effect_rows$area == ar, ,
+    # Look up the gate row in `omnibus_df` using its standardized
+    # column names. Two asymmetries to know about:
+    #   - `type_col` IS parameterized for the type lookup, because
+    #     callers using a `Type`-capital column (e.g., the ABC pipeline)
+    #     pass `type_col = "Type"` and the wrapper passes that through.
+    #     Hardcoding `$type` here would silently fail to match every row
+    #     and return NULL for every cell.
+    #   - `"area"` is HARDCODED. `iterate_by_area()` always stamps the
+    #     output with a lowercase `area` column, regardless of what
+    #     `area_col` was on the input data. (The script may pass
+    #     `area_col = "ROI"` for input lookup, but the omnibus_df it
+    #     receives has been stamped to `area`.) Using `[[area_col]]`
+    #     here would break the lookup whenever `area_col != "area"`.
+    row_match <- effect_rows[effect_rows[[type_col]] == ty &
+                             effect_rows$area == ar, ,
                              drop = FALSE]
     if (nrow(row_match) == 0) return(NULL)
 

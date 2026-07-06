@@ -36,5 +36,10 @@ utils::globalVariables(c(
   "y_pred",
   "ModLevel",
   # Cell label column built inside create_effect_size_heatmap()
-  "cell_label"
+  "cell_label",
+  # Bare aes() coordinate/label refs in create_heatmap_legend() and the
+  # build_page() helper inside plot_slope_lines().
+  "x",
+  "y",
+  "label"
 ))

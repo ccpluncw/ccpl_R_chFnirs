@@ -73,6 +73,25 @@ createHeatMapsFromLmerAreaAnalysis(
   results_df, area_col = "area", ...,
   area_order = sort_fnirs_channels_by_name(unique(df$area), "digpts.txt")
 )
+
+# Custom parser for a different naming convention. The parser takes the
+# character vector of names and returns a 2-column integer matrix of
+# (source, detector). Examples for common formats:
+
+# "S1-D1", "S12-D3" (NIRStar / Aurora style):
+p_dash <- function(names) {
+  m <- regmatches(names, regexec("^S(\\\\d+)-D(\\\\d+)$", names))
+  do.call(rbind, lapply(m, function(x) as.integer(x[2:3])))
+}
+sort_fnirs_channels_by_name(c("S1-D1", "S2-D3"), "digpts.txt",
+                            channel_parser = p_dash)
+
+# "Source1_Detector1" with a trailing chromophore token, e.g.
+# "Source1_Detector1 hbo":
+p_long <- function(names) {
+  m <- regmatches(names, regexec("Source(\\\\d+)_Detector(\\\\d+)", names))
+  do.call(rbind, lapply(m, function(x) as.integer(x[2:3])))
+}
 }
 
 }

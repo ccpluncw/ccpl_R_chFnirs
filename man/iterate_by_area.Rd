@@ -48,7 +48,7 @@ with \code{type} and \code{area} as the first two columns. Returns \code{NULL}
 if no cell produced output.
 }
 \description{
-Shared iteration engine used internally by all Tier 2 area-wise
+Shared iteration engine used internally by all the area-wise
 analysis functions (\code{run_omnibus_by_area}, \code{run_activation_tests},
 \code{run_gated_posthoc}, \code{run_slopes_vs_zero}, \code{run_gated_slopes}). It
 loops over unique values of \code{type_col} and \code{area_col}, subsets the
@@ -63,7 +63,7 @@ an entire analysis. Cells with fewer than \code{min_rows} observations
 are silently skipped.
 
 This helper exists to eliminate the ~15-line nested-loop boilerplate
-that would otherwise be duplicated across every public Tier 2
+that would otherwise be duplicated across every public area-wise
 function. Each public function builds short \code{fit_fn} and \code{extract_fn}
 closures that capture its specific model type, emmeans call, and
 column layout, and passes them here.

@@ -35,7 +35,7 @@ plot_slope_lines(
 )
 }
 \arguments{
-\item{results_df}{A data.frame in Tier 2 schema. Either the output
+\item{results_df}{A data.frame in the canonical schema. Either the output
 of \code{\link[=run_slopes_vs_zero]{run_slopes_vs_zero()}} (activation mode — no \code{posthoc_type}
 column) or the output of \code{\link[=run_gated_slopes]{run_gated_slopes()}} (post-hoc mode —
 has \code{posthoc_type}).}
@@ -156,8 +156,9 @@ continuous moderator (\code{trend_var}), optionally filtered to the
 level named in the row's \code{predictor} column.
 \item \strong{Gated post-hoc input} — output of \code{\link[=run_gated_slopes]{run_gated_slopes()}}. Each
 significant row is plotted as the two slope lines involved in the
-pairwise contrast recorded in that row (e.g., Eval vs No Eval at
-\code{cond = plan} for a three-way Group:cond:trend_var effect).
+pairwise contrast recorded in that row (e.g., the two levels of
+\code{Group} at one level of \code{cond}, for a three-way
+Group:cond:trend_var effect).
 }
 
 Mode is detected automatically from the presence of the
@@ -173,9 +174,9 @@ the two levels of A named in the row's \code{contrast} column — both at
 the specific level of B recorded implicitly in the row's \code{predictor}
 column. The conditioning level is parsed out of the \code{predictor}
 value by stripping the contrast text and the \code{suffix}. Example:
-\code{predictor = "plan_Eval - No Eval_CortSlopeDiff"},
-\code{contrast = "Eval - No Eval"}, \code{suffix = "CortSlopeDiff"} →
-conditioning level \code{"plan"}.
+\code{predictor = "lvl1_grpA - grpB_SlopeDiff"},
+\code{contrast = "grpA - grpB"}, \code{suffix = "SlopeDiff"} →
+conditioning level \code{"lvl1"}.
 
 \strong{Raw-data overlay.} When \code{show_points = TRUE} (default), the
 subject-level data points belonging to the group(s) being plotted

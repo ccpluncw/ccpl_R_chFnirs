@@ -68,7 +68,7 @@
 #' `gate = FALSE` to plot every cell in the filtered omnibus
 #' regardless of p-value.
 #'
-#' @param omnibus_df A BH-corrected omnibus table in Tier 2 schema
+#' @param omnibus_df A BH-corrected omnibus table in the canonical schema
 #'   (lowercase `type`, `area`, `effect`, `p_bh`, etc.), typically
 #'   produced by `run_omnibus_by_area_bh()`. Must contain an `effect`
 #'   column, and (when `gate = TRUE`) a column named by `p_col`.

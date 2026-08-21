@@ -58,8 +58,8 @@ run_lmer_analysis_by_area <- function(input_df, area_col, group_col = NULL, dv_c
     what = "run_lmer_analysis_by_area()",
     with = "run_omnibus_by_area()",
     details = c(
-      "The chFnirs Tier 2 refactor introduced run_omnibus_by_area(), which",
-      "supersedes run_lmer_analysis_by_area() with a unified API that",
+      "run_omnibus_by_area() supersedes run_lmer_analysis_by_area()",
+      "with a unified API that",
       "supports both lmer and lm (with optional HC robust covariance), a",
       "snake_case output schema, and always-on partial eta-squared. Call",
       "run_omnibus_by_area(data, formula, area_col, model = \"lmer\") for",

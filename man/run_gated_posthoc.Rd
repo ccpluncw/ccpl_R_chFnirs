@@ -106,11 +106,9 @@ that fail the gate optionally receive NA-filled placeholder rows so
 that downstream heatmap functions render them as grey tiles
 (preserving the predictor x area grid).
 
-This is the unified replacement for the three near-duplicate
-\code{run_gated_posthoc()} functions in the second-level analysis
-scripts. It accepts any \code{model} / \code{vcov} combination supported by
-the rest of the Tier 2 family and applies the same input / output
-schema conventions.
+It accepts any \code{model} / \code{vcov} combination supported by the rest
+of the area-wise analysis family, and applies the same input and
+output schema conventions.
 }
 \examples{
 \dontrun{

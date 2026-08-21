@@ -74,10 +74,9 @@ lmer fit was singular regardless of this setting. Requires the
 in the omnibus table to group by when applying BH correction.
 Defaults to \code{c("type", "effect")} — each chromophore x omnibus
 effect combination is an independent family. This matches the
-family structure used in the pre-Tier-2 second-level analysis
-scripts, which applied BH correction grouped by chromophore
-(\code{type}) and effect name (\code{effect}), just under different
-column names in the old schema. Pass a single column name
+family structure conventionally used in second-level fNIRS
+analysis, which applies BH correction grouped by chromophore
+(\code{type}) and effect name (\code{effect}). Pass a single column name
 (e.g., \code{"type"}) for a coarser family, or \code{NULL} to correct
 across the entire table as one family.}
 

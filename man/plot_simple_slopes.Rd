@@ -37,7 +37,7 @@ plot_simple_slopes(
 )
 }
 \arguments{
-\item{omnibus_df}{A BH-corrected omnibus table in Tier 2 schema
+\item{omnibus_df}{A BH-corrected omnibus table in the canonical schema
 (lowercase \code{type}, \code{area}, \code{effect}, \code{p_bh}, etc.), typically
 produced by \code{run_omnibus_by_area_bh()}. Must contain an \code{effect}
 column, and (when \code{gate = TRUE}) a column named by \code{p_col}.}

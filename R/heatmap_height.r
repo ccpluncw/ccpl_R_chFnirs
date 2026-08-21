@@ -60,7 +60,7 @@
 #'   stack with the not-tested swatch) or `3` if `show_legend` is
 #'   `FALSE`. Pass an explicit value to override.
 #' @param pred_col Name of the predictor column in `df`. Default
-#'   `"predictor"`, matching the Tier 2 chFnirs output schema.
+#'   `"predictor"`, matching the canonical chFnirs output schema.
 #' @param removeIntercept Logical. If `TRUE` (default), predictors
 #'   matching `"Intercept"` are dropped from the row count.
 #'

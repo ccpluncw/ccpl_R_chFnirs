@@ -17,8 +17,9 @@
 #'   level named in the row's `predictor` column.
 #' * **Gated post-hoc input** — output of [run_gated_slopes()]. Each
 #'   significant row is plotted as the two slope lines involved in the
-#'   pairwise contrast recorded in that row (e.g., Eval vs No Eval at
-#'   `cond = plan` for a three-way Group:cond:trend_var effect).
+#'   pairwise contrast recorded in that row (e.g., the two levels of
+#'   `Group` at one level of `cond`, for a three-way
+#'   Group:cond:trend_var effect).
 #'
 #' Mode is detected automatically from the presence of the
 #' `posthoc_type` column. Per-row (not per-cell) plotting keeps each
@@ -33,9 +34,9 @@
 #' the specific level of B recorded implicitly in the row's `predictor`
 #' column. The conditioning level is parsed out of the `predictor`
 #' value by stripping the contrast text and the `suffix`. Example:
-#' `predictor = "plan_Eval - No Eval_CortSlopeDiff"`,
-#' `contrast = "Eval - No Eval"`, `suffix = "CortSlopeDiff"` →
-#' conditioning level `"plan"`.
+#' `predictor = "lvl1_grpA - grpB_SlopeDiff"`,
+#' `contrast = "grpA - grpB"`, `suffix = "SlopeDiff"` →
+#' conditioning level `"lvl1"`.
 #'
 #' \strong{Raw-data overlay.} When `show_points = TRUE` (default), the
 #' subject-level data points belonging to the group(s) being plotted
@@ -55,7 +56,7 @@
 #' configured with; for `lm` + HC\* the CI uses the robust covariance
 #' passed as `vcov.`.
 #'
-#' @param results_df A data.frame in Tier 2 schema. Either the output
+#' @param results_df A data.frame in the canonical schema. Either the output
 #'   of [run_slopes_vs_zero()] (activation mode — no `posthoc_type`
 #'   column) or the output of [run_gated_slopes()] (post-hoc mode —
 #'   has `posthoc_type`).
@@ -527,8 +528,8 @@ plot_slope_lines <- function(
 
   # --- Iterate rows, grouped by type ---
   # Use [[type_col]] for type-column lookups so callers with a
-  # non-default type_col (e.g., the ABC pipeline's "Type" capital)
-  # match. Hardcode `$area` because iterate_by_area always stamps
+  # non-default type_col (e.g., a capitalized "Type" column) match.
+  # Hardcode `$area` because iterate_by_area always stamps
   # lowercase `area` on outputs regardless of input area_col.
   types_in_sig <- unique(as.character(sig[[type_col]]))
   result <- stats::setNames(vector("list", length(types_in_sig)),

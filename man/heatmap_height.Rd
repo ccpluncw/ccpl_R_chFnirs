@@ -43,7 +43,7 @@ stack with the not-tested swatch) or \code{3} if \code{show_legend} is
 \code{FALSE}. Pass an explicit value to override.}
 
 \item{pred_col}{Name of the predictor column in \code{df}. Default
-\code{"predictor"}, matching the Tier 2 chFnirs output schema.}
+\code{"predictor"}, matching the canonical chFnirs output schema.}
 
 \item{removeIntercept}{Logical. If \code{TRUE} (default), predictors
 matching \code{"Intercept"} are dropped from the row count.}

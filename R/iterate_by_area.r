@@ -1,7 +1,7 @@
 #' @title Iterate a per-cell analysis across type x area combinations
 #'
 #' @description
-#' Shared iteration engine used internally by all Tier 2 area-wise
+#' Shared iteration engine used internally by all the area-wise
 #' analysis functions (`run_omnibus_by_area`, `run_activation_tests`,
 #' `run_gated_posthoc`, `run_slopes_vs_zero`, `run_gated_slopes`). It
 #' loops over unique values of `type_col` and `area_col`, subsets the
@@ -16,7 +16,7 @@
 #' are silently skipped.
 #'
 #' This helper exists to eliminate the ~15-line nested-loop boilerplate
-#' that would otherwise be duplicated across every public Tier 2
+#' that would otherwise be duplicated across every public area-wise
 #' function. Each public function builds short `fit_fn` and `extract_fn`
 #' closures that capture its specific model type, emmeans call, and
 #' column layout, and passes them here.

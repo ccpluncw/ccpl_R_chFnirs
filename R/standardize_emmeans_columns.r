@@ -5,7 +5,7 @@
 #' `emmeans::contrast()`, or `emmeans::emtrends()` to the canonical
 #' chFnirs output schema (lowercase snake_case, `estimate` as the
 #' generic value column, `statistic` as the generic test-statistic
-#' column). Used internally by the Tier 2 wrappers but also exported so
+#' column). Used internally by the area-wise wrappers but also exported so
 #' that callers building their own emmeans-based analyses can produce
 #' chFnirs-compatible output tables.
 #'

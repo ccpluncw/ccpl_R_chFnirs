@@ -22,11 +22,11 @@ contain a predictor column (\code{"predictor"} or \code{"Predictor"}, or
 whatever name is passed via \code{predColName}) plus the columns
 named by \code{areaColName}, \code{sigColName}, and \code{dv_col}. Typically
 the output of \code{run_gated_posthoc()}, \code{run_activation_tests()},
-or one of the other Tier 2 functions.}
+or one of the other area-wise analysis functions.}
 
 \item{areaColName}{Character scalar naming the area column
 (e.g., \code{"area"}, \code{"ROI"}, \code{"Region"}). Default \code{"area"} matches
-the Tier 2 output schema.}
+the canonical output schema.}
 
 \item{sigColName}{Character scalar naming the significance column
 to use (e.g., \code{"p_bh"} for BH-adjusted omnibus p-values,
@@ -36,7 +36,7 @@ must choose which p-value column is appropriate.}
 
 \item{dv_col}{Character scalar naming the column whose sign gives
 the direction of the effect. Default \code{"estimate"} matches the
-Tier 2 output schema. For omnibus output use
+canonical output schema. For omnibus output use
 \code{output_mode = "continuous_unsigned"} and \code{dv_col} is unused.}
 
 \item{predColName}{Character scalar naming the predictor column in
@@ -71,7 +71,7 @@ columns.
 \description{
 Reshapes a long-format data frame of model results (typically the
 output of \code{run_omnibus_by_area()}, \code{run_gated_posthoc()}, or one of
-the other Tier 2 analysis functions) into a wide-format
+the other area-wise analysis functions) into a wide-format
 \verb{predictor x area} table suitable for heatmap rendering. Supports
 three output modes:
 \itemize{
@@ -88,8 +88,8 @@ NA values in the input (e.g., from non-significant cells in a
 gated post-hoc output) are preserved as NA in the output, so
 downstream heatmap functions can render them as grey tiles.
 
-The function accepts both the Tier 2 snake_case schema
-(\code{predictor}) and the pre-Tier-2 schema (\code{Predictor}). When
+The function accepts both the canonical snake_case schema
+(\code{predictor}) and the legacy schema (\code{Predictor}). When
 \code{predColName} is left at its default of \code{NULL}, the function
 inspects \code{df.data} for a \code{"predictor"} column first and falls
 back to \code{"Predictor"}; if neither is present, it errors and asks

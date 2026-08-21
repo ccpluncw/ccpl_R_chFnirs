@@ -227,10 +227,9 @@ run_gated_slopes <- function(omnibus_df,
   # letter of each factor name is capitalized, even when the factor
   # itself is lowercase in the data. This produces readable composite
   # labels like "GroupByCond" (rather than "GroupBycond") when factor
-  # names mix capital and lowercase, and it matches the labeling
-  # convention used in the second-level analysis scripts' inline
-  # `run_gated_emtrends()` helpers, so migration produces identical
-  # `posthoc_type` columns.
+  # names mix capital and lowercase. The convention is stable across
+  # releases, so downstream code can match `posthoc_type` values
+  # literally.
   cap_first <- function(s) {
     if (is.null(s) || length(s) == 0 || nchar(s) == 0) return(s)
     paste0(toupper(substr(s, 1, 1)), substr(s, 2, nchar(s)))
@@ -313,14 +312,12 @@ run_gated_slopes <- function(omnibus_df,
 
     for (eff in matching_effects) {
       # Look up the gate row in `omnibus_df`. Use `[[type_col]]` for
-      # the type lookup so callers using a non-default `type_col`
-      # (e.g., the ABC pipeline's wrapper, which sets it to "Type")
-      # match correctly. Hardcode `$area` because `iterate_by_area()`
-      # always stamps the omnibus output with a lowercase `area`
-      # column regardless of the input's `area_col`. Same asymmetry
-      # as the 2026-05-06 fix in run_gated_posthoc; see
-      # cleanandsavehrf_filter_critique / chfnirs_package_backlog
-      # for the architectural cleanup tracking the broader issue.
+      # the type lookup so callers with a non-default `type_col`
+      # (e.g., a capitalized "Type" column) match correctly. Hardcode
+      # `$area` because `iterate_by_area()` always stamps the omnibus
+      # output with a lowercase `area` column regardless of the
+      # input's `area_col`. `run_gated_posthoc()` carries the same
+      # asymmetry.
       row_match <- omnibus_df[omnibus_df$effect == eff &
                               omnibus_df[[type_col]] == ty &
                               omnibus_df$area == ar, , drop = FALSE]

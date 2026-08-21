@@ -3,7 +3,7 @@
 #' @description
 #' Reshapes a long-format data frame of model results (typically the
 #' output of `run_omnibus_by_area()`, `run_gated_posthoc()`, or one of
-#' the other Tier 2 analysis functions) into a wide-format
+#' the other area-wise analysis functions) into a wide-format
 #' `predictor x area` table suitable for heatmap rendering. Supports
 #' three output modes:
 #' \itemize{
@@ -20,8 +20,8 @@
 #' gated post-hoc output) are preserved as NA in the output, so
 #' downstream heatmap functions can render them as grey tiles.
 #'
-#' The function accepts both the Tier 2 snake_case schema
-#' (`predictor`) and the pre-Tier-2 schema (`Predictor`). When
+#' The function accepts both the canonical snake_case schema
+#' (`predictor`) and the legacy schema (`Predictor`). When
 #' `predColName` is left at its default of `NULL`, the function
 #' inspects `df.data` for a `"predictor"` column first and falls
 #' back to `"Predictor"`; if neither is present, it errors and asks
@@ -35,10 +35,10 @@
 #'   whatever name is passed via `predColName`) plus the columns
 #'   named by `areaColName`, `sigColName`, and `dv_col`. Typically
 #'   the output of `run_gated_posthoc()`, `run_activation_tests()`,
-#'   or one of the other Tier 2 functions.
+#'   or one of the other area-wise analysis functions.
 #' @param areaColName Character scalar naming the area column
 #'   (e.g., `"area"`, `"ROI"`, `"Region"`). Default `"area"` matches
-#'   the Tier 2 output schema.
+#'   the canonical output schema.
 #' @param sigColName Character scalar naming the significance column
 #'   to use (e.g., `"p_bh"` for BH-adjusted omnibus p-values,
 #'   `"p_bon"` for Bonferroni-adjusted post-hoc p-values,
@@ -46,7 +46,7 @@
 #'   must choose which p-value column is appropriate.
 #' @param dv_col Character scalar naming the column whose sign gives
 #'   the direction of the effect. Default `"estimate"` matches the
-#'   Tier 2 output schema. For omnibus output use
+#'   canonical output schema. For omnibus output use
 #'   `output_mode = "continuous_unsigned"` and `dv_col` is unused.
 #' @param predColName Character scalar naming the predictor column in
 #'   `df.data`. Default `NULL` triggers auto-detection: `"predictor"`
@@ -89,8 +89,8 @@ CreateSigBetaTable <- function(df.data, areaColName = "area", sigColName,
   }
 
   # Auto-detect the predictor column when the caller did not supply one.
-  # Tier 2 data uses lowercase `predictor`; pre-Tier-2 data (e.g., ABC)
-  # uses capitalized `Predictor`. The check is deterministic (lowercase
+  # Current output uses lowercase `predictor`; legacy tables use
+  # capitalized `Predictor`. The check is deterministic (lowercase
   # first, then capital) and errors loudly when neither is present, so
   # there is no silent wrong-column selection.
   if (is.null(predColName)) {

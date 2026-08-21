@@ -37,9 +37,8 @@
 #' @param y_breaks Optional numeric vector of y thresholds (in digpts
 #'   units) defining band boundaries explicitly. Overrides `n_bands`.
 #' @param channel_namer Function `function(source, detector) -> string`.
-#'   Default `function(s, d) sprintf("Ch_%d_%d", s, d)`, matching the
-#'   convention used in SPT and ABC fNIRS data. Override for sites that
-#'   use a different naming scheme.
+#'   Default `function(s, d) sprintf("Ch_%d_%d", s, d)`. Override for
+#'   data that uses a different channel naming scheme.
 #' @param verbose Logical. If `TRUE`, print orientation-check and band
 #'   summary to the console. Default `FALSE`.
 #'

@@ -29,9 +29,8 @@ left-to-right sort. Ignored when \code{y_breaks} is supplied.}
 units) defining band boundaries explicitly. Overrides \code{n_bands}.}
 
 \item{channel_namer}{Function \verb{function(source, detector) -> string}.
-Default \code{function(s, d) sprintf("Ch_\%d_\%d", s, d)}, matching the
-convention used in SPT and ABC fNIRS data. Override for sites that
-use a different naming scheme.}
+Default \code{function(s, d) sprintf("Ch_\%d_\%d", s, d)}. Override for
+data that uses a different channel naming scheme.}
 
 \item{verbose}{Logical. If \code{TRUE}, print orientation-check and band
 summary to the console. Default \code{FALSE}.}

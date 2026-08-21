@@ -89,7 +89,7 @@ name_map <- list(
 
 merged <- apply_roi_merge(
   weights, name_map,
-  save_dir  = c("path/to/SPT", "path/to/ABC"),
+  save_dir  = c("path/to/study1", "path/to/study2"),
   file_name = "ROI_aal_merged.xlsx"
 )
 }

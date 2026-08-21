@@ -27,8 +27,9 @@ in \verb{[0, 1]}).}
 \item{group_cols}{Character vector naming the columns in \code{auc_df}
 that define one subject-cell (e.g., subject + condition + type).
 The function groups by \code{c(group_cols, name_col)} for the aggregation.
-Default \code{c("ID", "cond", "type")} (SPT convention; ABC overrides
-with \code{c("ID", "Condition", "Type")}).}
+Default \code{c("ID", "cond", "type")}. Pipelines that use
+capitalized column names would pass
+\code{c("ID", "Condition", "Type")}.}
 
 \item{channel_col}{Character scalar naming the channel-identifier
 column in both \code{auc_df} and \code{link_df}. Default \code{"Channel"}.}
@@ -117,15 +118,15 @@ link$Channel <- paste("Ch", link$source, link$detector, sep = "_")
 
 auc <- read.csv("Final_AUC_Results.csv")
 
-# SPT (lowercase group cols, value_col = "AUC"):
+# Lowercase group columns, value_col = "AUC":
 roi_df <- aggregate_channel_to_roi(
   auc, link,
   group_cols = c("ID", "cond", "type"),
   value_col  = "AUC"
 )
 
-# ABC (uppercase group cols, same value_col override):
-roi_df_abc <- aggregate_channel_to_roi(
+# Capitalized group columns, same value_col override:
+roi_df_caps <- aggregate_channel_to_roi(
   auc, link,
   group_cols = c("ID", "Condition", "Type"),
   value_col  = "AUC"

@@ -32,10 +32,9 @@
 #'   in the omnibus table to group by when applying BH correction.
 #'   Defaults to `c("type", "effect")` — each chromophore x omnibus
 #'   effect combination is an independent family. This matches the
-#'   family structure used in the pre-Tier-2 second-level analysis
-#'   scripts, which applied BH correction grouped by chromophore
-#'   (`type`) and effect name (`effect`), just under different
-#'   column names in the old schema. Pass a single column name
+#'   family structure conventionally used in second-level fNIRS
+#'   analysis, which applies BH correction grouped by chromophore
+#'   (`type`) and effect name (`effect`). Pass a single column name
 #'   (e.g., `"type"`) for a coarser family, or `NULL` to correct
 #'   across the entire table as one family.
 #' @param bh_p_val_col Character scalar naming the raw p-value column
@@ -98,10 +97,9 @@ run_omnibus_by_area_bh <- function(data,
   if (is.null(omnibus_df) || nrow(omnibus_df) == 0) return(omnibus_df)
 
   # getBHvalues() retains its legacy `pBH` output column name for
-  # backwards compatibility with pre-Tier-2 chFnirs callers (e.g., the
-  # ABC analysis scripts). Rename to the canonical snake_case `p_bh`
-  # here so the Tier 2 output schema is consistent for new callers of
-  # run_omnibus_by_area_bh() and downstream Tier 2 functions that
+  # backwards compatibility with older callers. Rename to the
+  # canonical snake_case `p_bh` here so the output schema stays
+  # consistent with the other area-wise analysis functions, which
   # default to gating on `p_bh`.
   omnibus_bh <- getBHvalues(
     df_data   = omnibus_df,

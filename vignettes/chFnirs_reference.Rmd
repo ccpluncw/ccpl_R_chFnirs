@@ -47,11 +47,11 @@ The package contains 26 exported functions (plus 1 internal helper) organized in
 | **Gated post-hocs** | `run_gated_posthoc`, `run_gated_slopes` | Pairwise contrasts gated on omnibus significance |
 | **Visualization** | `createHeatMapsFromLmerAreaAnalysis`, `CreateSigBetaTable`, `create_pvalue_heatmap`, `create_posthoc_heatmap`, `create_omnibus_heatmap`, `create_forced_color_heatmap`, `create_effect_size_heatmap`, `create_heatmap_legend`, `plot_simple_slopes`, `plot_slope_lines` | Heatmaps, standalone legends, and slope plots |
 | **Utilities** | `getBHvalues`, `getQvalues`, `compute_cohens_d`, `compute_partial_eta_sq`, `has_tested_results`, `standardize_emmeans_columns`, `write_results_by_type`, `sort_rois_anatomically`, `sort_fnirs_channels_by_name`, `heatmap_height`, `shorten_string`, `run_lmer_analysis_by_area` (deprecated) | Effect sizes, p-value adjustment, column renaming, I/O, sorting, sizing |
-| **Internal** | `iterate_by_area` | Shared iteration engine for Tier 2 analysis functions |
+| **Internal** | `iterate_by_area` | Shared iteration engine for the area-wise analysis functions |
 
 ## Output column schema
 
-All Tier 2 analysis functions produce output in a unified snake\_case schema:
+All area-wise analysis functions produce output in a unified snake\_case schema:
 
 **Identifier columns (all functions):** `type`, `area`.
 
@@ -65,7 +65,7 @@ All Tier 2 analysis functions produce output in a unified snake\_case schema:
 
 ## Common arguments
 
-Several arguments are shared across the Tier 2 analysis functions:
+Several arguments are shared across the area-wise analysis functions:
 
 | Argument | Type | Description |
 |----------|------|-------------|
@@ -1200,7 +1200,7 @@ Original area-wise lmer omnibus function. Superseded by `run_omnibus_by_area()` 
 
 ## `iterate_by_area`
 
-Shared iteration engine used internally by all Tier 2 analysis functions. Loops over unique `type_col` x `area_col` combinations, subsets data, fits a model via `fit_fn`, extracts results via `extract_fn`, and row-binds the output. Errors for individual cells are caught with `tryCatch` and logged; the loop continues.
+Shared iteration engine used internally by all the area-wise analysis functions. Loops over unique `type_col` x `area_col` combinations, subsets data, fits a model via `fit_fn`, extracts results via `extract_fn`, and row-binds the output. Errors for individual cells are caught with `tryCatch` and logged; the loop continues.
 
 ### Usage
 

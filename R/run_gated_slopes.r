@@ -3,8 +3,9 @@
 #' @description
 #' For each type x area cell, checks the gated significance of every
 #' omnibus effect that involves a continuous moderator `trend_var` and,
-#' for those that pass the gate, runs pairwise Bonferroni-adjusted
-#' slope comparisons via `emmeans::emtrends()` + `emmeans::contrast()`.
+#' for those that pass the gate, runs pairwise slope comparisons via
+#' `emmeans::emtrends()` + `emmeans::contrast()`, Bonferroni-adjusted by
+#' default (see `adjust` for other methods and the adjustment scope).
 #' This is the continuous-moderator counterpart of
 #' [run_gated_posthoc()] — it tests "are slopes different between
 #' groups / conditions?" rather than "are marginal means different?"
@@ -62,8 +63,12 @@
 #'   cells receive NA-filled placeholder rows.
 #' @param min_rows Integer scalar; default `5`.
 #' @param cohens_d Logical; always `TRUE` for now.
-#' @param adjust Character scalar passed to `emmeans::contrast()`'s
-#'   `adjust=` argument. Default `"bonferroni"`.
+#' @param adjust Character scalar passed to \code{emmeans::contrast()}'s
+#'   \code{adjust=} argument. Effects decomposed by a second categorical
+#'   factor are adjusted within each level of that factor, not across
+#'   the area, and the two decomposition directions (\code{<A>By<B>} and
+#'   \code{<B>By<A>}) are adjusted separately. Default
+#'   \code{"bonferroni"}.
 #' @param suffix Character scalar appended to pairwise-contrast
 #'   predictor labels to distinguish slope comparisons from mean
 #'   comparisons in combined output. Default `"SlopeDiff"`.

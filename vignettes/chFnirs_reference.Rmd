@@ -876,11 +876,16 @@ plot_simple_slopes(
   p_threshold      = 0.05,
   gate             = TRUE,
   mod_sd_levels    = c(-1, 0, 1),
+  line_colors      = NULL,
   y_label          = NULL,
   pdf_prefix       = NULL,
   output_dir       = ".",
   split_by_type    = TRUE,
   show_points      = FALSE,
+  show_ci          = TRUE,
+  x_label          = NULL,
+  moderator_label  = NULL,
+  panel_labels     = NULL,
   fig_width        = 7,
   fig_height       = 5
 )
@@ -897,6 +902,11 @@ plot_simple_slopes(
 | `y_label` | string/NULL | `NULL` | Auto-detected from formula LHS. |
 | `pdf_prefix` | string/NULL | `NULL` | If non-NULL, writes multi-page PDFs. |
 | `show_points` | logical | `FALSE` | Overlay raw subject data. Default FALSE because moderator slices are synthetic. |
+| `show_ci` | logical | `TRUE` | Pointwise 95% confidence band (from `emmeans`) behind each line, filled with the line color at alpha 0.15. `FALSE` draws lines alone. |
+| `line_colors` | string vector/NULL | `NULL` | One color per value of `mod_sd_levels`; wrong length errors. `NULL` interpolates blue, gray, red across sorted levels (-1, 0, 1 give `steelblue`, `grey45`, `tomato`). For lines alone in a grey, blue and navy scheme use `show_ci = FALSE, line_colors = c("grey65", "steelblue", "navyblue")`. |
+| `x_label` | named string vector/NULL | `NULL` | x-axis labels keyed by `var1`/`var2`, since the variables swap axes between pages. Unnamed variables keep their names. |
+| `moderator_label` | named string vector/NULL | `NULL` | Legend titles keyed by `var1`/`var2`. A named moderator also shortens its level labels to `-1SD`, `Mean`, `+1SD`. |
+| `panel_labels` | named string vector/NULL | `NULL` | Facet-strip labels keyed by factor level. Unmatched names error. |
 
 ### Return value
 

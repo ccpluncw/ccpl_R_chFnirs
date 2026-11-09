@@ -342,14 +342,14 @@ activation_cond$p_bh <- p.adjust(activation_cond$p_value, method = "BH")
 
 When the omnibus reports a significant interaction or main effect, the
 next question is which specific levels differ. `chFnirs` uses a
-**gated** (or **gatekeeping**) testing strategy (Dmitrienko & Tamhane,
-2007): pairwise post-hoc contrasts at a given (type, area) cell are
-only computed when the omnibus test for the named effect at that cell
-was significant after BH correction. Cells where the omnibus was not
-significant pass no post-hocs --- this controls the error rate across
-the full two-stage procedure and is the modern formalization of
-Fisher's classical "protected" post-hoc principle. `run_gated_posthoc()`
-runs `emmeans`-based pairwise contrasts in exactly this fashion.
+**gated** testing strategy: pairwise post-hoc contrasts at a given
+(type, area) cell are only computed when the omnibus test for the named
+effect at that cell was significant after BH correction. This protects
+against reporting post-hocs for an effect that is absent across all
+areas. It does not control error across effects, models, or signals, so
+users should define their correction families and report them.
+`run_gated_posthoc()` runs `emmeans`-based pairwise contrasts in exactly
+this fashion.
 
 To gate on the planted Group $\times$ cond interaction, and compare
 Group levels within each level of cond:
@@ -836,10 +836,6 @@ Cui, X., Bray, S., & Reiss, A. L. (2010). Functional near infrared
 spectroscopy (NIRS) signal improvement based on negative correlation
 between oxygenated and deoxygenated hemoglobin dynamics.
 *NeuroImage, 49*(4), 3039--3046.
-
-Dmitrienko, A., & Tamhane, A. C. (2007). Gatekeeping procedures with
-clinical trial applications. *Pharmaceutical Statistics, 6*(3),
-171--180.
 
 Long, J. S., & Ervin, L. H. (2000). Using heteroscedasticity
 consistent standard errors in the linear regression model.

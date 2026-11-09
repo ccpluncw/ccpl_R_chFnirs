@@ -78,7 +78,11 @@ cells receive NA-filled placeholder rows.}
 \item{cohens_d}{Logical; always \code{TRUE} for now.}
 
 \item{adjust}{Character scalar passed to \code{emmeans::contrast()}'s
-\verb{adjust=} argument. Default \code{"bonferroni"}.}
+\code{adjust=} argument. Effects decomposed by a second categorical
+factor are adjusted within each level of that factor, not across
+the area, and the two decomposition directions (\code{<A>By<B>} and
+\code{<B>By<A>}) are adjusted separately. Default
+\code{"bonferroni"}.}
 
 \item{suffix}{Character scalar appended to pairwise-contrast
 predictor labels to distinguish slope comparisons from mean
@@ -94,8 +98,9 @@ cell contributes nothing for that effect.
 \description{
 For each type x area cell, checks the gated significance of every
 omnibus effect that involves a continuous moderator \code{trend_var} and,
-for those that pass the gate, runs pairwise Bonferroni-adjusted
-slope comparisons via \code{emmeans::emtrends()} + \code{emmeans::contrast()}.
+for those that pass the gate, runs pairwise slope comparisons via
+\code{emmeans::emtrends()} + \code{emmeans::contrast()}, Bonferroni-adjusted by
+default (see \code{adjust} for other methods and the adjustment scope).
 This is the continuous-moderator counterpart of
 \code{\link[=run_gated_posthoc]{run_gated_posthoc()}} — it tests "are slopes different between
 groups / conditions?" rather than "are marginal means different?"

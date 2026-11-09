@@ -83,12 +83,15 @@ entirely from the output.}
 \item{cohens_d}{Logical; always \code{TRUE} for now. Output schema
 always includes a \code{cohens_d} column.}
 
-\item{adjust}{Character scalar passed to \code{emmeans::contrast()} as
-its \verb{adjust=} argument. Default \code{"bonferroni"}. Other valid
-values include \code{"tukey"}, \code{"sidak"}, \code{"holm"}, \code{"none"}, etc.;
-whichever is used, the resulting p-value column is named \code{p_bon}
-in the output regardless (column name reflects the "post-hoc
-pairwise p-value" slot, not the specific method).}
+\item{adjust}{Character scalar passed to \code{emmeans::contrast()}
+as its \code{adjust=} argument. When \code{by_var} is set, the
+adjustment applies within each level of that factor (\code{by=} in
+\code{emmeans::contrast()}), not across all contrasts in the area.
+Other valid values include \code{"tukey"}, \code{"sidak"},
+\code{"holm"}, \code{"none"}, etc.; whichever is used, the
+resulting p-value column is named \code{p_bon} in the output
+regardless (column name reflects the "post-hoc pairwise p-value"
+slot, not the specific method). Default \code{"bonferroni"}.}
 }
 \value{
 A data.frame with columns \code{type}, \code{area}, \code{contrast},
@@ -100,8 +103,9 @@ otherwise.
 \description{
 For each type x area cell, checks whether a named omnibus effect
 cleared the significance gate (BH-adjusted p-value below
-\code{p_threshold}) and, if so, runs pairwise Bonferroni-adjusted
-contrasts over \code{contrast_factor} via \code{emmeans::contrast()}. Cells
+\code{p_threshold}) and, if so, runs pairwise contrasts over
+\code{contrast_factor} via \code{emmeans::contrast()}, Bonferroni-adjusted by
+default (see \code{adjust} for other methods and the adjustment scope). Cells
 that fail the gate optionally receive NA-filled placeholder rows so
 that downstream heatmap functions render them as grey tiles
 (preserving the predictor x area grid).

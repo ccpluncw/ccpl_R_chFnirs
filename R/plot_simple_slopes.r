@@ -53,6 +53,16 @@
 #' `ggeffects::ggpredict()` or `interactions::interact_plot()` on the
 #' same model but avoids adding either as a dependency.
 #'
+#' \strong{Confidence bands and colors.} When \code{show_ci = TRUE} (the
+#' default), a ribbon behind each line shows the pointwise 95% confidence
+#' interval from \code{emmeans::emmeans()} at the plotted x values, with
+#' the moderator at each requested level and any other factors treated
+#' the same way as for the line. Degrees of freedom are whatever
+#' \code{emmeans} uses for that model. The y-axis range includes the
+#' bands. With \code{line_colors = NULL} the lines and bands run from
+#' blue through gray to red across the sorted levels of
+#' \code{mod_sd_levels}.
+#'
 #' \strong{Effect pattern matching.} The default `effect_pattern` is a
 #' regex that matches any effect name containing both `var1` and `var2`
 #' as whole words, in either order. This means cells gated on
@@ -131,9 +141,13 @@
 #'   Mean, Mean+1SD. Use `c(-1, 1)` to drop the mean line, `c(-2, 0, 2)`
 #'   for wider fans, etc. Level labels are auto-generated from the
 #'   values as `<moderator> +/-<n>SD` / `<moderator> Mean`.
-#' @param line_colors Character vector of colors for the moderator
-#'   levels. Recycled to match `length(mod_sd_levels)`. Default
-#'   `c("grey65", "steelblue", "navyblue")`.
+#' @param line_colors Character vector of colors, one per value of
+#'   \code{mod_sd_levels} and in the same order. A vector of any other
+#'   length errors. For lines in a grey, blue and navy scheme use
+#'   \code{line_colors = c("grey65", "steelblue", "navyblue")} with three
+#'   levels. Default \code{NULL} interpolates blue, gray and red across
+#'   the sorted levels, so the levels -1, 0 and 1 give \code{"steelblue"},
+#'   \code{"grey45"} and \code{"tomato"}.
 #' @param line_types Character vector of ggplot2 linetype names,
 #'   recycled to match. Default `c("dashed", "solid", "longdash")`.
 #' @param theme_base_size Numeric scalar passed to
@@ -178,6 +192,32 @@
 #'   `show_points = TRUE`. Default `"ID"`.
 #' @param point_alpha Numeric in (0, 1]. Alpha transparency for raw
 #'   points when `show_points = TRUE`. Default `0.35`.
+#' @param show_ci Logical. Draw a pointwise 95% confidence band behind
+#'   each line, filled with the line color at alpha 0.15. \code{FALSE}
+#'   draws the lines alone. For lines alone in a grey, blue and navy
+#'   scheme use \code{show_ci = FALSE} with
+#'   \code{line_colors = c("grey65", "steelblue", "navyblue")}. Default
+#'   \code{TRUE}.
+#' @param x_label Named character vector of x-axis labels keyed by the
+#'   values of \code{var1} and \code{var2}, for example
+#'   \code{c(varA = "Variable A", varB = "Variable B")}. Names are needed
+#'   because the two variables swap axes between \code{page_A} and
+#'   \code{page_B}. A variable that is not named keeps its variable name
+#'   on the x-axis. Names matching neither variable error. Default
+#'   \code{NULL}.
+#' @param moderator_label Named character vector keyed like
+#'   \code{x_label}. On a page whose moderator is named, the value titles
+#'   the legend and the level labels drop the variable name
+#'   (\code{"-1SD"}, \code{"Mean"}, \code{"+1SD"}). A moderator that is
+#'   not named keeps the legend title \code{"Moderator"} and level labels
+#'   built from its variable name. Names matching neither variable error.
+#'   Default \code{NULL}.
+#' @param panel_labels Named character vector of facet-strip labels keyed
+#'   by factor level, for example
+#'   \code{c(levelA = "Level A", levelB = "Level B")}. Unnamed levels keep
+#'   their level names. Names that match no level of the facet factors for
+#'   the matched effects error, as does supplying labels when no effect
+#'   is faceted. Panel order does not change. Default \code{NULL}.
 #'
 #' @return Invisibly returns a named nested list with one element per
 #'   chromophore type present in the filtered omnibus. Each element is
@@ -243,7 +283,7 @@
 #' @importFrom ggplot2 ggplot aes geom_line scale_color_manual
 #' @importFrom ggplot2 scale_linetype_manual labs theme_minimal theme
 #' @importFrom ggplot2 element_text facet_wrap facet_grid
-#' @importFrom grDevices pdf dev.off
+#' @importFrom grDevices pdf dev.off colorRampPalette
 #' @export
 plot_simple_slopes <- function(
     omnibus_df,
@@ -263,7 +303,7 @@ plot_simple_slopes <- function(
     min_rows         = 5,
     y_label          = NULL,
     mod_sd_levels    = c(-1, 0, 1),
-    line_colors      = c("grey65", "steelblue", "navyblue"),
+    line_colors      = NULL,
     line_types       = c("dashed", "solid", "longdash"),
     theme_base_size  = 14,
     pdf_prefix    = NULL,
@@ -274,7 +314,11 @@ plot_simple_slopes <- function(
     show_points      = FALSE,
     points_aggregate = c("auto", "never"),
     id_col           = "ID",
-    point_alpha      = 0.35
+    point_alpha      = 0.35,
+    show_ci          = TRUE,
+    x_label          = NULL,
+    moderator_label  = NULL,
+    panel_labels     = NULL
 ) {
 
   points_aggregate <- match.arg(points_aggregate)
@@ -339,6 +383,38 @@ plot_simple_slopes <- function(
   if (!is.numeric(mod_sd_levels) || length(mod_sd_levels) == 0) {
     stop("`mod_sd_levels` must be a non-empty numeric vector.", call. = FALSE)
   }
+  if (!is.logical(show_ci) || length(show_ci) != 1 || is.na(show_ci)) {
+    stop("`show_ci` must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (!is.null(line_colors) &&
+      length(line_colors) != length(mod_sd_levels)) {
+    stop("`line_colors` must have one color per value of `mod_sd_levels` (",
+         length(mod_sd_levels), "); got ", length(line_colors), ".",
+         call. = FALSE)
+  }
+  if (is.null(line_colors)) {
+    #blue-gray-red across the sorted levels so colors do not repeat
+    blue_gray_red <- grDevices::colorRampPalette(
+      c("steelblue", "grey45", "tomato")
+    )
+    line_colors <- blue_gray_red(length(mod_sd_levels))[
+      rank(mod_sd_levels, ties.method = "first")
+    ]
+  }
+  for (lab_arg in c("x_label", "moderator_label")) {
+    lab <- get(lab_arg)
+    if (is.null(lab)) next
+    if (!is.character(lab) || is.null(names(lab)) || !all(nzchar(names(lab)))) {
+      stop("`", lab_arg, "` must be a named character vector keyed by `var1` ",
+           "and `var2`, because the two variables swap roles between pages.",
+           call. = FALSE)
+    }
+    unmatched <- setdiff(names(lab), c(var1, var2))
+    if (length(unmatched) > 0) {
+      stop("`", lab_arg, "` names match neither `var1` nor `var2`: ",
+           paste(unmatched, collapse = ", "), call. = FALSE)
+    }
+  }
   if (show_points && points_aggregate == "auto" &&
       !(id_col %in% colnames(data))) {
     stop("`points_aggregate = \"auto\"` requires `id_col = \"", id_col,
@@ -365,6 +441,37 @@ plot_simple_slopes <- function(
     message("No omnibus effects match pattern '", effect_pattern,
             "'. Returning empty result.")
     return(invisible(list()))
+  }
+
+  #facet factors for an effect, from facet_by or parsed from the effect name
+  derive_facet_vars <- function(eff) {
+    if (!is.null(facet_by)) return(facet_by)
+    tokens <- strsplit(as.character(eff), ":", fixed = TRUE)[[1]]
+    candidates <- setdiff(tokens, c(var1, var2))
+    candidates[candidates %in% colnames(data)]
+  }
+
+  #check against every matched effect so the result does not depend on the gate
+  if (!is.null(panel_labels)) {
+    if (!is.character(panel_labels) || is.null(names(panel_labels)) ||
+        !all(nzchar(names(panel_labels)))) {
+      stop("`panel_labels` must be a named character vector keyed by ",
+           "factor level.", call. = FALSE)
+    }
+    panel_vars <- unique(unlist(lapply(matching_effects, derive_facet_vars)))
+    known_levels <- unique(unlist(lapply(panel_vars, function(fv) {
+      as.character(data[[fv]])
+    })))
+    unmatched <- setdiff(names(panel_labels), known_levels)
+    if (length(unmatched) > 0) {
+      stop("`panel_labels` names match no facet level: ",
+           paste(unmatched, collapse = ", "), ". Available levels: ",
+           if (length(known_levels) > 0) {
+             paste(known_levels, collapse = ", ")
+           } else {
+             "none (no matched effect is faceted)"
+           }, ".", call. = FALSE)
+    }
   }
 
   sig_rows <- omnibus_df[omnibus_df$effect %in% matching_effects, , drop = FALSE]
@@ -397,6 +504,16 @@ plot_simple_slopes <- function(
     }
   }
 
+  #level names with any requested replacements
+  strip_labeller <- if (is.null(panel_labels)) {
+    ggplot2::label_value
+  } else {
+    ggplot2::as_labeller(function(lv) {
+      lab <- unname(panel_labels[lv])
+      ifelse(is.na(lab), lv, lab)
+    })
+  }
+
   # --- Inner helper: build one simple-slopes page ---
   # focal_var on the x-axis, moderator_var split at mod_sd_levels SD.
   # facet_vars (character vector) names categorical factors to facet
@@ -410,14 +527,18 @@ plot_simple_slopes <- function(
     mod_sd_v  <- stats::sd(df_sub[[moderator_var]], na.rm = TRUE)
     mod_values <- mod_mean + mod_sd_levels * mod_sd_v
 
+    #a named moderator titles the legend so its levels drop the variable name
+    mod_named <- moderator_var %in% names(moderator_label)
+    lev_prefix <- if (mod_named) "" else paste0(moderator_var, " ")
+
     # Level labels: "<mod> +1SD" / "<mod> Mean" / "<mod> -1SD" etc.
     make_label <- function(sd_mult) {
       if (sd_mult == 0) {
-        paste0(moderator_var, " Mean")
+        paste0(lev_prefix, "Mean")
       } else if (sd_mult > 0) {
-        paste0(moderator_var, " +", format(sd_mult, trim = TRUE), "SD")
+        paste0(lev_prefix, "+", format(sd_mult, trim = TRUE), "SD")
       } else {
-        paste0(moderator_var, " ", format(sd_mult, trim = TRUE), "SD")
+        paste0(lev_prefix, format(sd_mult, trim = TRUE), "SD")
       }
     }
     lev_labels <- vapply(mod_sd_levels, make_label, character(1))
@@ -440,6 +561,11 @@ plot_simple_slopes <- function(
       em_form <- ~ 1
     }
 
+    #band grid adds the focal variable so emmeans returns one row per x
+    band_form <- stats::as.formula(
+      paste0("~ ", paste(c(facet_vars, focal_var), collapse = " + "))
+    )
+
     preds_list <- lapply(seq_along(mod_values), function(j) {
       mv    <- mod_values[j]
       label <- lev_labels[j]
@@ -460,16 +586,39 @@ plot_simple_slopes <- function(
       emt_df <- as.data.frame(summary(emt))
       em_df  <- as.data.frame(summary(em))
 
+      band_df <- NULL
+      if (show_ci) {
+        at_band <- setNames(list(focal_range, mv),
+                            c(focal_var, moderator_var))
+        em_band <- if (!is.null(vc)) {
+          emmeans::emmeans(fit, band_form, at = at_band, vcov. = vc)
+        } else {
+          emmeans::emmeans(fit, band_form, at = at_band)
+        }
+        band_df <- as.data.frame(summary(em_band, infer = c(TRUE, FALSE)))
+      }
+
+      add_band <- function(out, rows) {
+        if (is.null(rows)) return(out)
+        rows <- rows[order(rows[[focal_var]]), , drop = FALSE]
+        lcl_col <- if ("lower.CL" %in% colnames(rows)) "lower.CL" else "asymp.LCL"
+        ucl_col <- if ("upper.CL" %in% colnames(rows)) "upper.CL" else "asymp.UCL"
+        out$lcl <- rows[[lcl_col]]
+        out$ucl <- rows[[ucl_col]]
+        out
+      }
+
       if (length(facet_vars) == 0) {
         # Unfaceted 2-way path — preserve original behavior.
         slope     <- emt_df[[trend_col]]
         intercept <- em_df$emmean
-        data.frame(
+        out <- data.frame(
           focal    = focal_range,
           y_pred   = intercept + slope * (focal_range - focal_m),
           ModLevel = factor(label, levels = lev_labels),
           stringsAsFactors = FALSE
         )
+        add_band(out, band_df)
       } else {
         # One slope/intercept per facet-level combination.
         do.call(rbind, lapply(seq_len(nrow(emt_df)), function(k) {
@@ -482,15 +631,22 @@ plot_simple_slopes <- function(
             stringsAsFactors = FALSE
           )
           for (fv in facet_vars) out[[fv]] <- emt_df[k, fv]
-          out
+          band_rows <- NULL
+          if (show_ci) {
+            in_panel <- Reduce(`&`, lapply(facet_vars, function(fv) {
+              as.character(band_df[[fv]]) == as.character(emt_df[k, fv])
+            }))
+            band_rows <- band_df[in_panel, , drop = FALSE]
+          }
+          add_band(out, band_rows)
         }))
       }
     })
     preds <- do.call(rbind, preds_list)
 
-    # Recycle colors and linetypes to match the number of levels
+    #line_colors has one color per level, linetypes recycle
     n_levels   <- length(lev_labels)
-    colors_used <- rep_len(line_colors, n_levels)
+    colors_used <- line_colors
     ltypes_used <- rep_len(line_types, n_levels)
     names(colors_used) <- lev_labels
     names(ltypes_used) <- lev_labels
@@ -502,8 +658,14 @@ plot_simple_slopes <- function(
     }
 
     p <- ggplot(preds, aes(x = focal, y = y_pred,
-                           color = ModLevel, linetype = ModLevel)) +
-      geom_line(linewidth = 1.2)
+                           color = ModLevel, linetype = ModLevel))
+    if (show_ci) {
+      p <- p + ggplot2::geom_ribbon(
+        ggplot2::aes(ymin = lcl, ymax = ucl, fill = ModLevel),
+        alpha = 0.15, color = NA
+      )
+    }
+    p <- p + geom_line(linewidth = 1.2)
 
     if (show_points) {
       y_col <- if (length(as.character(formula)) >= 2) {
@@ -550,34 +712,49 @@ plot_simple_slopes <- function(
       }
     }
 
+    x_lab <- if (focal_var %in% names(x_label)) {
+      x_label[[focal_var]]
+    } else {
+      focal_var
+    }
+    legend_title <- if (mod_named) moderator_label[[moderator_var]] else "Moderator"
+
     final_plot <- p +
       scale_color_manual(values = colors_used) +
       scale_linetype_manual(values = ltypes_used) +
       labs(
         title    = paste0(ty, " | ", ar),
         subtitle = subtitle,
-        x        = focal_var,
+        x        = x_lab,
         y        = y_label,
-        color    = "Moderator",
-        linetype = "Moderator"
+        color    = legend_title,
+        linetype = legend_title
       )
+    if (show_ci) {
+      final_plot <- final_plot +
+        ggplot2::scale_fill_manual(values = colors_used) +
+        labs(fill = legend_title)
+    }
 
     # Faceting layer. One facet -> facet_wrap. Two -> facet_grid.
     # More -> facet_wrap on the combined interaction (with a notice).
     if (length(facet_vars) == 1) {
       final_plot <- final_plot + ggplot2::facet_wrap(
-        stats::as.formula(paste0("~ ", facet_vars[1]))
+        stats::as.formula(paste0("~ ", facet_vars[1])),
+        labeller = strip_labeller
       )
     } else if (length(facet_vars) == 2) {
       final_plot <- final_plot + ggplot2::facet_grid(
-        stats::as.formula(paste0(facet_vars[1], " ~ ", facet_vars[2]))
+        stats::as.formula(paste0(facet_vars[1], " ~ ", facet_vars[2])),
+        labeller = strip_labeller
       )
     } else if (length(facet_vars) > 2) {
       message("  [INFO] plot_simple_slopes: ", length(facet_vars),
               " facet variables; using facet_wrap on the combined ",
               "interaction. Consider passing `facet_by` explicitly.")
       final_plot <- final_plot + ggplot2::facet_wrap(
-        stats::as.formula(paste0("~ ", paste(facet_vars, collapse = " + ")))
+        stats::as.formula(paste0("~ ", paste(facet_vars, collapse = " + "))),
+        labeller = strip_labeller
       )
     }
 
@@ -587,18 +764,6 @@ plot_simple_slopes <- function(
         plot.title      = element_text(face = "bold"),
         legend.position = "bottom"
       )
-  }
-
-  # --- Derive facet vars for a given effect string ---
-  # User-supplied `facet_by` takes precedence (already validated above);
-  # auto-detection tokenizes the effect on ":", drops var1/var2, and
-  # keeps tokens that are columns in `data`. Per-row because different
-  # surviving effects can have different residual factors.
-  derive_facet_vars <- function(eff) {
-    if (!is.null(facet_by)) return(facet_by)
-    tokens <- strsplit(as.character(eff), ":", fixed = TRUE)[[1]]
-    candidates <- setdiff(tokens, c(var1, var2))
-    candidates[candidates %in% colnames(data)]
   }
 
   # --- Main loop: build pages per type ---

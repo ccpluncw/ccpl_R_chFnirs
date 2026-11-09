@@ -3,8 +3,9 @@
 #' @description
 #' For each type x area cell, checks whether a named omnibus effect
 #' cleared the significance gate (BH-adjusted p-value below
-#' `p_threshold`) and, if so, runs pairwise Bonferroni-adjusted
-#' contrasts over `contrast_factor` via `emmeans::contrast()`. Cells
+#' `p_threshold`) and, if so, runs pairwise contrasts over
+#' `contrast_factor` via `emmeans::contrast()`, Bonferroni-adjusted by
+#' default (see `adjust` for other methods and the adjustment scope). Cells
 #' that fail the gate optionally receive NA-filled placeholder rows so
 #' that downstream heatmap functions render them as grey tiles
 #' (preserving the predictor x area grid).
@@ -57,12 +58,15 @@
 #' @param min_rows Integer scalar; default `5`.
 #' @param cohens_d Logical; always `TRUE` for now. Output schema
 #'   always includes a `cohens_d` column.
-#' @param adjust Character scalar passed to `emmeans::contrast()` as
-#'   its `adjust=` argument. Default `"bonferroni"`. Other valid
-#'   values include `"tukey"`, `"sidak"`, `"holm"`, `"none"`, etc.;
-#'   whichever is used, the resulting p-value column is named `p_bon`
-#'   in the output regardless (column name reflects the "post-hoc
-#'   pairwise p-value" slot, not the specific method).
+#' @param adjust Character scalar passed to \code{emmeans::contrast()}
+#'   as its \code{adjust=} argument. When \code{by_var} is set, the
+#'   adjustment applies within each level of that factor (\code{by=} in
+#'   \code{emmeans::contrast()}), not across all contrasts in the area.
+#'   Other valid values include \code{"tukey"}, \code{"sidak"},
+#'   \code{"holm"}, \code{"none"}, etc.; whichever is used, the
+#'   resulting p-value column is named \code{p_bon} in the output
+#'   regardless (column name reflects the "post-hoc pairwise p-value"
+#'   slot, not the specific method). Default \code{"bonferroni"}.
 #'
 #' @return A data.frame with columns `type`, `area`, `contrast`,
 #'   `predictor`, `estimate`, `se`, `df`, `statistic`, `statistic_type`

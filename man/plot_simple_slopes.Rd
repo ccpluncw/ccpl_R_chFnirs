@@ -22,7 +22,7 @@ plot_simple_slopes(
   min_rows = 5,
   y_label = NULL,
   mod_sd_levels = c(-1, 0, 1),
-  line_colors = c("grey65", "steelblue", "navyblue"),
+  line_colors = NULL,
   line_types = c("dashed", "solid", "longdash"),
   theme_base_size = 14,
   pdf_prefix = NULL,
@@ -33,7 +33,11 @@ plot_simple_slopes(
   show_points = FALSE,
   points_aggregate = c("auto", "never"),
   id_col = "ID",
-  point_alpha = 0.35
+  point_alpha = 0.35,
+  show_ci = TRUE,
+  x_label = NULL,
+  moderator_label = NULL,
+  panel_labels = NULL
 )
 }
 \arguments{
@@ -117,9 +121,13 @@ Mean, Mean+1SD. Use \code{c(-1, 1)} to drop the mean line, \code{c(-2, 0, 2)}
 for wider fans, etc. Level labels are auto-generated from the
 values as \verb{<moderator> +/-<n>SD} / \verb{<moderator> Mean}.}
 
-\item{line_colors}{Character vector of colors for the moderator
-levels. Recycled to match \code{length(mod_sd_levels)}. Default
-\code{c("grey65", "steelblue", "navyblue")}.}
+\item{line_colors}{Character vector of colors, one per value of
+\code{mod_sd_levels} and in the same order. A vector of any other
+length errors. For lines in a grey, blue and navy scheme use
+\code{line_colors = c("grey65", "steelblue", "navyblue")} with three
+levels. Default \code{NULL} interpolates blue, gray and red across
+the sorted levels, so the levels -1, 0 and 1 give \code{"steelblue"},
+\code{"grey45"} and \code{"tomato"}.}
 
 \item{line_types}{Character vector of ggplot2 linetype names,
 recycled to match. Default \code{c("dashed", "solid", "longdash")}.}
@@ -174,6 +182,36 @@ matches N. Only takes effect when \code{show_points = TRUE}.}
 
 \item{point_alpha}{Numeric in (0, 1]. Alpha transparency for raw
 points when \code{show_points = TRUE}. Default \code{0.35}.}
+
+\item{show_ci}{Logical. Draw a pointwise 95\% confidence band behind
+each line, filled with the line color at alpha 0.15. \code{FALSE}
+draws the lines alone. For lines alone in a grey, blue and navy
+scheme use \code{show_ci = FALSE} with
+\code{line_colors = c("grey65", "steelblue", "navyblue")}. Default
+\code{TRUE}.}
+
+\item{x_label}{Named character vector of x-axis labels keyed by the
+values of \code{var1} and \code{var2}, for example
+\code{c(varA = "Variable A", varB = "Variable B")}. Names are needed
+because the two variables swap axes between \code{page_A} and
+\code{page_B}. A variable that is not named keeps its variable name
+on the x-axis. Names matching neither variable error. Default
+\code{NULL}.}
+
+\item{moderator_label}{Named character vector keyed like
+\code{x_label}. On a page whose moderator is named, the value titles
+the legend and the level labels drop the variable name
+(\code{"-1SD"}, \code{"Mean"}, \code{"+1SD"}). A moderator that is
+not named keeps the legend title \code{"Moderator"} and level labels
+built from its variable name. Names matching neither variable error.
+Default \code{NULL}.}
+
+\item{panel_labels}{Named character vector of facet-strip labels keyed
+by factor level, for example
+\code{c(levelA = "Level A", levelB = "Level B")}. Unnamed levels keep
+their level names. Names that match no level of the facet factors for
+the matched effects error, as does supplying labels when no effect
+is faceted. Panel order does not change. Default \code{NULL}.}
 }
 \value{
 Invisibly returns a named nested list with one element per
@@ -236,6 +274,16 @@ moderator level \eqn{m} is then reconstructed analytically as
 This approach is numerically equivalent to using
 \code{ggeffects::ggpredict()} or \code{interactions::interact_plot()} on the
 same model but avoids adding either as a dependency.
+
+\strong{Confidence bands and colors.} When \code{show_ci = TRUE} (the
+default), a ribbon behind each line shows the pointwise 95\% confidence
+interval from \code{emmeans::emmeans()} at the plotted x values, with
+the moderator at each requested level and any other factors treated
+the same way as for the line. Degrees of freedom are whatever
+\code{emmeans} uses for that model. The y-axis range includes the
+bands. With \code{line_colors = NULL} the lines and bands run from
+blue through gray to red across the sorted levels of
+\code{mod_sd_levels}.
 
 \strong{Effect pattern matching.} The default \code{effect_pattern} is a
 regex that matches any effect name containing both \code{var1} and \code{var2}

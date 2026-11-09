@@ -35,6 +35,8 @@ utils::globalVariables(c(
   "focal",
   "y_pred",
   "ModLevel",
+  "lcl",
+  "ucl",
   # Cell label column built inside create_effect_size_heatmap()
   "cell_label",
   # Bare aes() coordinate/label refs in create_heatmap_legend() and the
